@@ -1,0 +1,365 @@
+========================================
+- Server Profile
+
+Server Information
+Server Member Online List
+Server Member Offline List
+Server Member Count
+Server Name Change
+Server Name Add
+Server Name Remove
+Server Icon Change
+Server Icon Add
+Server Icon Remove
+Server Banner Color Change
+Server Trait Add
+Server Trait Remove
+Server Trait Update
+Server Trait Emoji Update
+Server Description Update
+Server Description Remove
+Server Description Add
+Server Game Update
+Server Game Add
+Server Game Remove
+Server Private Profile Enable
+Server Private Profile Disable
+
+========================================
+-Server Tag
+
+Server Tag Name Add
+Server Tag Name Remove
+Server Tag Name Update
+Server Tag Badge Add
+Server Tag Badge Remove
+Server Tag Badge Update
+Server Tag Color Add
+Server Tag Color Remove
+Server Tag Color Update
+
+========================================
+-Server Engagement
+
+Server Welcome Message Enable
+Server Welcome Message Disable
+Server Welcome Sticker Enable
+Server Welcome Sticker Disable
+Server Boost Message Enable
+Server Boost Message Disable
+Server Helpful Tips Enable
+Server Helpful Tips Disable
+Server Messages Channel Add
+Server Messages Channel Remove
+Server Messages Channel Update
+Server Activity Feed Enable
+Server Activity Feed Disable
+Server Default Notifications Update
+Server Inactive Channel Add
+Server Inactive Channel Remove
+Server Inactive Channel Update
+Server Inactive Timeout Update
+Server Widget Enable
+Server Widget Disable
+Server Widget Invite Channel Add
+Server Widget Invite Channel Remove 
+Server Widget Invite Channel Update
+Server Widget Server ID Copy
+Server Widget JSON API Copy
+Server Widget Premade Copy
+
+========================================
+-Server Boost Perks
+
+Server Progress Bar Enable
+Server Progress Bar Disable
+Server Banner Background Add
+Server Banner Background Remove
+Server Banner Background Update
+Server Invite Background Add
+Server Invite Background Remove
+Server Invite Background Update
+Server Invite Custom Name Add
+Server Invite Custom Name Remove
+Server Invite Custom Name Update
+
+========================================
+-Server Emoji
+
+Server Emoji Add
+Server Emoji Remove
+Server Emoji Update
+Server Emoji Edit
+Server Emoji Name Edit
+Server Emoji List
+Server Emoji Normal List
+Server Emoji Nitro List
+
+========================================
+-Server Sticker
+
+Server Sticker Add
+Server Sticker Remove
+Server Sticker Update
+Server Sticker Emoji Add
+Server Sticker Emoji Remove
+Server Sticker Name Add
+Server Sticker Name Remove
+Server Sticker Name Update
+Server Sticker Description Add
+Server Sticker Description Remove
+Server Sticker Description Update
+Server Sticker List
+Server Sticker Slot Check
+
+========================================
+-Server Soundbored
+
+Server Soundbored Add
+Server Soundbored Remove
+Server Soundbored Update
+Server Soundbored Name Add
+Server Soundbored Name Remove
+Server Soundbored Emoji Add
+Server Soundbored Emoji Remove
+Server Soundbored Emoji Update
+Server Soundbored Volume Update
+
+========================================
+-Server Invites
+
+Server Invite Add
+Server Invite Remove
+Server Invite Link
+Server Invite Expire Add
+Server Invite Expire Update
+Server Invite Pause 
+Server Invite List
+Server Invite User Information
+
+========================================
+-Server Roles
+
+Role Add
+Role Remove
+Role ID
+Role Creation Time
+Role Recent Update Time
+Role List
+Role Ping
+Role Icon Add
+Role Icon Remove
+Role Display Enable
+Role Display Disable
+Role @Mention Enable
+Role @Mention Disable
+Role Style Change
+Role Color Change
+Role Permission Add
+Role Permission Remove
+Role Permission List
+Role Permission List Available
+Role Permission List Taken
+Role Permission Clear
+Role Permission Update
+Role Link Requirement Add
+Role Link Requirement Remove
+Role Member List
+Role Member Add
+Role Member Remove
+
+========================================
+-Server Access
+
+Server Access Update
+Server Age Restricted Enable
+Server Age Restricted Disable
+Server Rules Enable
+Server Rules Disable
+Server Rules Add
+Server Rules Remove
+Server Rules Update
+
+========================================
+-Server Integrations
+
+Server Webhook Add
+Server Webhook Remove
+Server Webhook Update
+Server Webhook Icon Add
+Server Webhook Icon Remove
+Server Webhook Icon Update 
+Server Webhook Name Add
+Server Webhook Name Remove
+Server Webhook Name Update
+Server Webhook Channel Add
+Server Webhook Channel Remove
+Server Webhook Channel Update
+Server Webhook URL
+Server Webhook List
+Server Integration Bot List
+Server Integration Bot Manage
+Server Integration Bot Role Add
+Server Integration Bot Role Remove 
+Server Integration Bot Member Add
+Server Integration Bot Member Remove
+Server Integration Bot Member List
+Server Integration Bot Role List
+Server Integration Bot Role Enable
+Server Integration Bot Role Disable
+Server Integration Bot Member Enable
+Server Integration Bot Member Disable
+Server Integration Bot Channel Add
+Server Integration Bot Channel Remove
+Server Integration Bot Channel List
+Server Integration Bot Command List
+Server Integration Bot Command Add
+Server Integration Bot Command Remove
+Server Integration Bot Information
+Server Integration Bot Permissions List
+Server Integration Bot Webhook List
+Server Integration Bot Remove
+
+========================================
+-Server Safety Setup
+
+Server Safety Channel List Enable
+Server Safety Channel List Disable 
+Server Safety Verification Level Add
+Server Safety Verification Level Remove
+Server Safety Content Filter Add
+Server Safety Content Filter Remove
+Server Safety Activity Alerts Enable
+Server Safety Activity Alerts Disable
+Server Safety Notifications Channel Add
+Server Safety Notifications Channel Update
+
+========================================
+-Server Automod
+
+Server Automod list
+Server Automod Rule Edit
+Server Automod Rule Delete
+Server Automod Rule ID
+Server Automod Content Filter Remove
+Server Automod Content Filter Update
+
+=====
+-Block Mentions Spam
+
+Server Automod Enable
+Server Automod Disable
+Server Automod Rule Name Add
+Server Automod Rule Name Remove
+Server Automod Rule Name Update
+Server Automod Configuration Limits Update
+Server Automod Response Enable
+Server Automod Response Disable
+Server Automod Response Edit Custom Message Add
+Server Automod Response Edit Custom Message Remove
+Server Automod Response Edit Custom Message Update
+Server Automod Response Edit Alert Channel Add
+Server Automod Response Edit Alert Channel Remove
+Server Automod Response Edit Alert Channel Update
+Server Automod Response Edit Timeout Time Update
+Server Automod Roles Add
+Server Automod Roles Remove
+Server Automod Channels Add
+Server Automod Channels Remove
+
+=====
+-Block Suspected Spam Content
+
+Server Automod Enable
+Server Automod Disable
+Server Automod Rule Name Add
+Server Automod Rule Name Remove
+Server Automod Rule Name Update
+Server Automod Response Enable
+Server Automod Response Disable
+Server Automod Response Edit Custom Message Add
+Server Automod Response Edit Custom Message Remove
+Server Automod Response Edit Custom Message Update
+Server Automod Response Edit Alert Channel Add
+Server Automod Response Edit Alert Channel Remove
+Server Automod Response Edit Alert Channel Update
+Server Automod Roles Add
+Server Automod Roles Remove
+Server Automod Channels Add
+Server Automod Channels Remove
+
+=====
+-Block Commonly Flagged Words
+
+Server Automod Enable
+Server Automod Disable
+Server Automod Rule Name Add
+Server Automod Rule Name Remove
+Server Automod Rule Name Update
+Server Automod language List
+Server Automod Language Enable
+Server Automod Language Disable
+Server Automod Language Optional List
+Server Automod Language Optional Add
+Server Automod Language Optional Remove
+Server Automod Language Optional Update
+Server Automod Response Enable
+Server Automod Response Disable
+Server Automod Response Edit Custom Message Add
+Server Automod Response Edit Custom Message Remove
+Server Automod Response Edit Custom Message Update
+Server Automod Response Edit Alert Channel Add
+Server Automod Response Edit Alert Channel Remove
+Server Automod Response Edit Alert Channel Update
+Server Automod Roles Add
+Server Automod Roles Remove
+Server Automod Channels Add
+Server Automod Channels Remove
+
+=====
+-Block Custom Words
+
+Server Automod Enable
+Server Automod Disable
+Server Automod Rule Name Add
+Server Automod Rule Name Remove
+Server Automod Rule Name Update
+Server Automod Word List
+Server Automod Word Add
+Server Automod Word Remove
+Server Automod Word Update
+Server Automod Regex Optional List
+Server Automod Regex Optional Add
+Server Automod Regex Optional Remove
+Server Automod Regex Optional Update
+Server Automod Allow Words/Phrases Optional List
+Server Automod Allow Words/Phrases Optional Add
+Server Automod Allow Words/Phrases Optional Remove
+Server Automod Allow Words/Phrases Optional Update
+Server Automod Response Enable
+Server Automod Response Disable
+Server Automod Response Edit Custom Message Add
+Server Automod Response Edit Custom Message Remove
+Server Automod Response Edit Custom Message Update
+Server Automod Response Edit Alert Channel Add
+Server Automod Response Edit Alert Channel Remove
+Server Automod Response Edit Alert Channel Update
+Server Automod Response Edit Timeout Time Update
+Server Automod Roles Add
+Server Automod Roles Remove
+Server Automod Channels Add
+Server Automod Channels Remove
+
+========================================
+-Server Template
+
+Server Template Title Add
+Server Template Title Remove
+Server Template Title Update
+Server Template Description Add
+Server Template Description Remove
+Server Template Description Update
+Server Template Link Copy
+Server Template Delete
+
+========================================
