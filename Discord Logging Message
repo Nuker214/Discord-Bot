@@ -1,0 +1,39 @@
+### **Super-Detailed Embed Example – Member Join**
+
+**Title:** 🟢 Member Joined
+**Color:** Green
+**Thumbnail:** User Avatar
+**Author:** @User#1234
+**Description:**
+
+> A new member has joined the server. Full account and server details are logged below.
+
+**Fields:**
+
+* **User Tag:** @User#1234
+* **User ID:** 123456789012345678
+* **Account Created:** 12-Jan-2020 15:42 UTC
+* **Joined Server:** 24-Jan-2026 10:12 UTC
+* **Roles Assigned:** Member, VIP (IDs: 111111111111111111, 222222222222222222)
+* **Boost Status:** Not boosted
+* **Boost Level:** 0
+* **Boosting Since:** N/A
+* **Voice Channel Joined:** N/A
+* **Pending Verification:** No
+* **Invite Used:** Discord.gg/example (Code: abc123)
+* **Permissions:** Read Messages ✅, Send Messages ✅, Manage Messages ❌, Kick Members ❌, Ban Members ❌
+* **Badges:** None
+* **Previous Suspensions:** 0
+* **Warnings:** 0
+* **Roles Hierarchy Position:** Lowest (2/20)
+
+**Footer:**
+
+> System Logging • Powered by [YourBotName] • Server ID: 987654321098765432
+
+**Timestamp:** 24-Jan-2026 10:12 UTC
+
+**Optional Buttons:**
+
+* **View Audit Log** 📜 – link to Discord Audit Logs
+* **Warn User** ⚠️ – quick moderator action
