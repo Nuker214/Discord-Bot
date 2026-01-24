@@ -1,0 +1,154 @@
+### **1. Member Management**
+
+* Member banned
+* Member unbanned
+* Member kicked
+* Member timed out (timeout added/removed/updated)
+* Member joined server
+* Member left server
+* Member nickname changed
+* Member roles added
+* Member roles removed
+* Member moved to another voice channel
+* Member muted/unmuted in voice
+* Member deafened/undeafened in voice
+* Member boosted server
+* Member boosted removed
+
+
+
+### **2. Role Management**
+
+* Role created
+* Role deleted
+* Role name changed
+* Role color changed
+* Role permissions changed
+* Role hoist toggled (displayed separately)
+* Role mentionable toggled
+
+
+
+### **3. Channel Management**
+
+* Channel created (text, voice, announcement, stage, category)
+* Channel deleted
+* Channel name changed
+* Channel topic changed
+* Channel slowmode changed
+* Channel NSFW toggled
+* Channel bitrate changed (voice channels)
+* Channel user limit changed (voice channels)
+* Channel permission overwrites changed
+* Channel type changed (rare)
+* Channel archived/unarchived (threads)
+* Channel auto-archive duration changed (threads)
+
+
+
+### **4. Message / Reaction Management**
+
+* Message deleted
+* Message edited
+* Message bulk deleted
+* Reaction added
+* Reaction removed
+* Reaction removed for all users
+
+
+
+### **5. Emoji / Sticker Management**
+
+* Emoji created
+* Emoji deleted
+* Emoji updated (name, roles, or image)
+* Sticker created
+* Sticker deleted
+* Sticker updated (name, roles, or image)
+
+
+
+### **6. Server (Guild) Settings**
+
+* Server name changed
+* Server icon changed
+* Server banner changed
+* Server description changed
+* Server AFK channel changed
+* Server AFK timeout changed
+* Server verification level changed
+* Server default message notifications changed
+* Server explicit content filter changed
+* Server locale changed
+* Server vanity URL changed
+* Server boost level changed
+* Server system channel changed
+* Server rules channel changed
+* Server public updates channel changed
+
+
+
+### **7. Webhooks / Integrations**
+
+* Webhook created
+* Webhook deleted
+* Webhook updated
+* Integration created
+* Integration deleted
+* Integration updated
+
+
+
+### **8. Stage Events**
+
+* Stage instance created
+* Stage instance updated
+* Stage instance deleted
+
+
+
+### **9. Threads**
+
+* Thread created
+* Thread updated
+* Thread deleted
+* Thread archived/unarchived
+* Thread auto-archive duration changed
+* Thread members added
+* Thread members removed
+
+
+
+### **10. Application / Bot Events**
+
+* Slash command created
+* Slash command updated
+* Slash command deleted
+* Command permissions updated
+* Interaction used (slash commands, buttons, select menus)
+
+
+
+### **11. Voice / Presence**
+
+* Member joins voice
+* Member leaves voice
+* Member mutes/unmutes (self or server)
+* Member deafens/undeafens (self or server)
+* Member starts/stops streaming
+* Presence updates (status changes like online/offline/dnd/idle)
+* Activity updates (game, custom status, Spotify listening, etc.)
+
+
+
+### **12. Audit Log Specific Actions**
+
+* Invite created
+* Invite deleted
+* Role position changed
+* Channel moved to a different category
+* Permissions overwrites updated
+* System message deleted
+* Integration revoked (bot removed)
+
+
