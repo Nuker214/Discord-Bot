@@ -1,0 +1,462 @@
+Bot Commands
+
+========================================
+- Server Profile
+
+Server Information
+Server Member Online List
+Server Member Offline List
+Server Member Count
+Server Name Change
+Server Name Add
+Server Name Remove
+Server Icon Change
+Server Icon Add
+Server Icon Remove
+Server Banner Color Change
+Server Trait Add
+Server Trait Remove
+Server Trait Update
+Server Trait Emoji Update
+Server Description Update
+Server Description Remove
+Server Description Add
+Server Game Update
+Server Game Add
+Server Game Remove
+Server Private Profile Enable
+Server Private Profile Disable
+
+========================================
+-Server Tag
+
+Server Tag Name Add
+Server Tag Name Remove
+Server Tag Name Update
+Server Tag Badge Add
+Server Tag Badge Remove
+Server Tag Badge Update
+Server Tag Color Add
+Server Tag Color Remove
+Server Tag Color Update
+
+========================================
+-Server Engagement
+
+Server Welcome Message Enable
+Server Welcome Message Disable
+Server Welcome Sticker Enable
+Server Welcome Sticker Disable
+Server Boost Message Enable
+Server Boost Message Disable
+Server Helpful Tips Enable
+Server Helpful Tips Disable
+Server Messages Channel Add
+Server Messages Channel Remove
+Server Messages Channel Update
+Server Activity Feed Enable
+Server Activity Feed Disable
+Server Default Notifications Update
+Server Inactive Channel Add
+Server Inactive Channel Remove
+Server Inactive Channel Update
+Server Inactive Timeout Update
+Server Widget Enable
+Server Widget Disable
+Server Widget Invite Channel Add
+Server Widget Invite Channel Remove 
+Server Widget Invite Channel Update
+Server Widget Server ID Copy
+Server Widget JSON API Copy
+Server Widget Premade Copy
+
+========================================
+-Server Boost Perks
+
+Server Progress Bar Enable
+Server Progress Bar Disable
+Server Banner Background Add
+Server Banner Background Remove
+Server Banner Background Update
+Server Invite Background Add
+Server Invite Background Remove
+Server Invite Background Update
+Server Invite Custom Name Add
+Server Invite Custom Name Remove
+Server Invite Custom Name Update
+
+========================================
+-Server Emoji
+
+Server Emoji Add
+Server Emoji Remove
+Server Emoji Update
+Server Emoji Edit
+Server Emoji Name Edit
+Server Emoji List
+Server Emoji Normal List
+Server Emoji Nitro List
+
+========================================
+-Server Sticker
+
+Server Sticker Add
+Server Sticker Remove
+Server Sticker Update
+Server Sticker Emoji Add
+Server Sticker Emoji Remove
+Server Sticker Name Add
+Server Sticker Name Remove
+Server Sticker Name Update
+Server Sticker Description Add
+Server Sticker Description Remove
+Server Sticker Description Update
+Server Sticker List
+Server Sticker Slot Check
+
+========================================
+-Server Soundbored
+
+Server Soundbored Add
+Server Soundbored Remove
+Server Soundbored Update
+Server Soundbored Name Add
+Server Soundbored Name Remove
+Server Soundbored Emoji Add
+Server Soundbored Emoji Remove
+Server Soundbored Emoji Update
+Server Soundbored Volume Update
+
+========================================
+-Server Invites
+
+Server Invite Add
+Server Invite Remove
+Server Invite Link
+Server Invite Expire Add
+Server Invite Expire Update
+Server Invite Pause 
+Server Invite List
+Server Invite User Information
+
+========================================
+-Server Roles
+
+Role Add
+Role Remove
+Role ID
+Role Creation Time
+Role Recent Update Time
+Role List
+Role Ping
+Role Icon Add
+Role Icon Remove
+Role Display Enable
+Role Display Disable
+Role @Mention Enable
+Role @Mention Disable
+Role Style Change
+Role Color Change
+Role Permission Add
+Role Permission Remove
+Role Permission List
+Role Permission List Available
+Role Permission List Taken
+Role Permission Clear
+Role Permission Update
+Role Link Requirement Add
+Role Link Requirement Remove
+Role Member List
+Role Member Add
+Role Member Remove
+
+========================================
+-Server Access
+
+Server Access Update
+Server Age Restricted Enable
+Server Age Restricted Disable
+Server Rules Enable
+Server Rules Disable
+Server Rules Add
+Server Rules Remove
+Server Rules Update
+
+========================================
+-Server Integrations
+
+Server Webhook Add
+Server Webhook Remove
+Server Webhook Update
+Server Webhook Icon Add
+Server Webhook Icon Remove
+Server Webhook Icon Update 
+Server Webhook Name Add
+Server Webhook Name Remove
+Server Webhook Name Update
+Server Webhook Channel Add
+Server Webhook Channel Remove
+Server Webhook Channel Update
+Server Webhook URL
+Server Webhook List
+Server Integration Bot List
+Server Integration Bot Manage
+Server Integration Bot Role Add
+Server Integration Bot Role Remove 
+Server Integration Bot Member Add
+Server Integration Bot Member Remove
+Server Integration Bot Member List
+Server Integration Bot Role List
+Server Integration Bot Role Enable
+Server Integration Bot Role Disable
+Server Integration Bot Member Enable
+Server Integration Bot Member Disable
+Server Integration Bot Channel Add
+Server Integration Bot Channel Remove
+Server Integration Bot Channel List
+Server Integration Bot Command List
+Server Integration Bot Command Add
+Server Integration Bot Command Remove
+Server Integration Bot Information
+Server Integration Bot Permissions List
+Server Integration Bot Webhook List
+Server Integration Bot Remove
+
+========================================
+-Server Safety Setup
+
+Server Safety Channel List Enable
+Server Safety Channel List Disable 
+Server Safety Verification Level Add
+Server Safety Verification Level Remove
+Server Safety Content Filter Add
+Server Safety Content Filter Remove
+Server Safety Activity Alerts Enable
+Server Safety Activity Alerts Disable
+Server Safety Notifications Channel Add
+Server Safety Notifications Channel Update
+
+========================================
+-Server Automod
+
+Server Automod list
+Server Automod Rule Edit
+Server Automod Rule Delete
+Server Automod Rule ID
+Server Automod Content Filter Remove
+Server Automod Content Filter Update
+
+=====
+-Block Mentions Spam
+
+Server Automod Enable
+Server Automod Disable
+Server Automod Rule Name Add
+Server Automod Rule Name Remove
+Server Automod Rule Name Update
+Server Automod Configuration Limits Update
+Server Automod Response Enable
+Server Automod Response Disable
+Server Automod Response Edit Custom Message Add
+Server Automod Response Edit Custom Message Remove
+Server Automod Response Edit Custom Message Update
+Server Automod Response Edit Alert Channel Add
+Server Automod Response Edit Alert Channel Remove
+Server Automod Response Edit Alert Channel Update
+Server Automod Response Edit Timeout Time Update
+Server Automod Roles Add
+Server Automod Roles Remove
+Server Automod Channels Add
+Server Automod Channels Remove
+
+=====
+-Block Suspected Spam Content
+
+Server Automod Enable
+Server Automod Disable
+Server Automod Rule Name Add
+Server Automod Rule Name Remove
+Server Automod Rule Name Update
+Server Automod Response Enable
+Server Automod Response Disable
+Server Automod Response Edit Custom Message Add
+Server Automod Response Edit Custom Message Remove
+Server Automod Response Edit Custom Message Update
+Server Automod Response Edit Alert Channel Add
+Server Automod Response Edit Alert Channel Remove
+Server Automod Response Edit Alert Channel Update
+Server Automod Roles Add
+Server Automod Roles Remove
+Server Automod Channels Add
+Server Automod Channels Remove
+
+=====
+-Block Commonly Flagged Words
+
+Server Automod Enable
+Server Automod Disable
+Server Automod Rule Name Add
+Server Automod Rule Name Remove
+Server Automod Rule Name Update
+Server Automod language List
+Server Automod Language Enable
+Server Automod Language Disable
+Server Automod Language Optional List
+Server Automod Language Optional Add
+Server Automod Language Optional Remove
+Server Automod Language Optional Update
+Server Automod Response Enable
+Server Automod Response Disable
+Server Automod Response Edit Custom Message Add
+Server Automod Response Edit Custom Message Remove
+Server Automod Response Edit Custom Message Update
+Server Automod Response Edit Alert Channel Add
+Server Automod Response Edit Alert Channel Remove
+Server Automod Response Edit Alert Channel Update
+Server Automod Roles Add
+Server Automod Roles Remove
+Server Automod Channels Add
+Server Automod Channels Remove
+
+=====
+-Block Custom Words
+
+Server Automod Enable
+Server Automod Disable
+Server Automod Rule Name Add
+Server Automod Rule Name Remove
+Server Automod Rule Name Update
+Server Automod Word List
+Server Automod Word Add
+Server Automod Word Remove
+Server Automod Word Update
+Server Automod Regex Optional List
+Server Automod Regex Optional Add
+Server Automod Regex Optional Remove
+Server Automod Regex Optional Update
+Server Automod Allow Words/Phrases Optional List
+Server Automod Allow Words/Phrases Optional Add
+Server Automod Allow Words/Phrases Optional Remove
+Server Automod Allow Words/Phrases Optional Update
+Server Automod Response Enable
+Server Automod Response Disable
+Server Automod Response Edit Custom Message Add
+Server Automod Response Edit Custom Message Remove
+Server Automod Response Edit Custom Message Update
+Server Automod Response Edit Alert Channel Add
+Server Automod Response Edit Alert Channel Remove
+Server Automod Response Edit Alert Channel Update
+Server Automod Response Edit Timeout Time Update
+Server Automod Roles Add
+Server Automod Roles Remove
+Server Automod Channels Add
+Server Automod Channels Remove
+
+========================================
+-Server Template
+
+Server Template Title Add
+Server Template Title Remove
+Server Template Title Update
+Server Template Description Add
+Server Template Description Remove
+Server Template Description Update
+Server Template Link Copy
+Server Template Delete
+
+========================================
+
+========================================
+
+
+I want to create a discord bot but im only going to be using Github And Render, Static Website to keep my bot online
+
+But First Things First is i want to make the bot so whenever he is added to the server i want the bot to Send A Embed (I will give you the code for the embed) and after the embed is sent i want underneath the embed 2 Buttons
+1. Start Setup
+2. Ignore Setup
+========================================
+
+
+The Bot Files will be Organized Very Well
+
+The First Folder Bot System will include the bot and coding
+the second folder Commands will include all the commands for each file
+the third folder will be the logging folder will include all of the logging
+yes this is github
+
+and for the logging i will give you all the events i want you to log.
+
+if the user hits start setup the bot will go head and make 2 roles these roles will be
+System Manager
+System Assistant
+these roles will determine who controls the bot
+
+so if system manager that is the role that the bot adds to the person who ADDED the bot
+and if system assistant they will get half of the commands that they can use also if the system assistant tries to use a command thats the system manager it will Ping The System Manager Role Asking For Authrozition to run the Command with two buttons below
+Approve, Deny if the person who has System manager clicks deny it will mention the user that requested the permission to use the command and is met with a message Access Denied
+
+
+Also if any other admin in the server trys to add the system manager or system assistant role to themselves the bot will Remove them from the role and the person who tried to assign it to themselves is met with a Warning. if it exceeds 3 attempts of warnings the System Manager will be notified in Render Console and in discord chat with a embed. 
+
+for the system manager they must run the command .Assign System Assistant the bot will add that role to the person that is supposed to get the role. if the system manager runs .Unassign System Assistant from the user the bot will proceed to remove the role from that user and they are met with a message stating that the role has been removed.
+
+next thing that the setup button does it will create a Catorgory in the server and make it private to others except the System Manager And System Assistant. then next the channels the bot makes in the catorgory will be 
+
+Catogory name will be BOT STATISCS
+
+then it will have the channels 
+1. Bot Warnings
+2. Bot Errors
+3. Render Console Log
+4. Github Update Log
+5. Uptime Log
+6. Render Error Log
+7. Self Assign Attempts
+8. Command Errors
+
+It Will also create another catorgory called Server Logs and it will include the channels we will get to that in a few seconds! but i do want to create a command that says .channelsetup but like i said we will get to that in a few seconds..
+
+
+==========================================
+
+this is the logging style i want
+
+### **Super-Detailed Embed Example – Member Join**
+
+**Title:** 🟢 Member Joined
+**Color:** Green
+**Thumbnail:** User Avatar
+**Author:** @User#1234
+**Description:**
+
+> A new member has joined the server. Full account and server details are logged below.
+(also this description should be a little longer)
+**Fields:**
+
+* **User Tag:** @User#1234
+* **User ID:** 123456789012345678
+* **Account Created:** 12-Jan-2020 15:42 UTC
+* **Joined Server:** 24-Jan-2026 10:12 UTC
+* **Roles Assigned:** Member, VIP (IDs: 111111111111111111, 222222222222222222)
+* **Boost Status:** Not boosted
+* **Boost Level:** 0
+* **Boosting Since:** N/A
+* **Voice Channel Joined:** N/A
+* **Pending Verification:** No
+* **Invite Used:** Discord.gg/example (Code: abc123)
+* **Permissions:** Read Messages ✅, Send Messages ✅, Manage Messages ❌, Kick Members ❌, Ban Members ❌
+* **Badges:** None
+* **Previous Suspensions:** 0
+* **Warnings:** 0
+* **Roles Hierarchy Position:** Lowest (2/20)
+
+**Footer:**
+
+> System Logging • Powered by [YourBotName] • Server ID: 987654321098765432
+
+**Timestamp:** 24-Jan-2026 10:12 UTC
+
+**Optional Buttons:**
+
+* **View Audit Log** 📜 – link to Discord Audit Logs
+* **Warn User** ⚠️ – quick moderator acti
