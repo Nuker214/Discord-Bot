@@ -1,26 +1,20 @@
 // index.js
-const { Client, GatewayIntentBits } = require("discord.js");
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require("discord.js");
 const express = require("express");
 
 // --- Environment variables ---
 const TOKEN = process.env.TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 
-if (!TOKEN || !GUILD_ID) {
-  console.error("Missing required environment variables: TOKEN or GUILD_ID");
+if (!TOKEN || !CLIENT_ID || !GUILD_ID) {
+  console.error("Missing required environment variables: TOKEN, CLIENT_ID, or GUILD_ID");
   process.exit(1);
 }
 
-// --- Command prefix ---
-const PREFIX = ".";
-
 // --- Discord client ---
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
+  intents: [GatewayIntentBits.Guilds]
 });
 
 // --- TSVM Role hierarchy ---
@@ -67,27 +61,44 @@ const PORT = process.env.PORT || 3000;
 app.get("/", (req, res) => res.send("TSVM bot is alive."));
 app.listen(PORT, () => console.log(`Web server running on port ${PORT}`));
 
+// --- Register slash command ---
+const commands = [
+  new SlashCommandBuilder()
+    .setName("rolecreate")
+    .setDescription("Creates the full TSVM hierarchy")
+].map(cmd => cmd.toJSON());
+
+const rest = new REST({ version: "10" }).setToken(TOKEN);
+
+(async () => {
+  try {
+    console.log("Registering slash commands...");
+    await rest.put(
+      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+      { body: commands }
+    );
+    console.log("Slash commands registered successfully ✅");
+  } catch (err) {
+    console.error("Error registering slash commands:", err);
+  }
+})();
+
 // --- Ready event ---
 client.once("ready", () => {
   console.log(`Logged in as ${client.user.tag} ✅`);
 });
 
-// --- Message command handler ---
-client.on("messageCreate", async message => {
-  if (message.author.bot) return;
-  if (!message.content.startsWith(PREFIX)) return;
+// --- Slash command handler ---
+client.on("interactionCreate", async interaction => {
+  if (!interaction.isChatInputCommand()) return;
 
-  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
-  const command = args.shift().toLowerCase();
-
-  if (command === "rolecreate") {
-    const guild = client.guilds.cache.get(GUILD_ID);
-    if (!guild) return message.reply("Bot is not in the server.");
-
-    // Immediate reply to prevent Discord timeout
-    const replyMsg = await message.reply("Starting TSVM role creation... this may take a moment.");
-
+  if (interaction.commandName === "rolecreate") {
     try {
+      await interaction.reply("Starting TSVM role creation... this may take a moment.");
+
+      const guild = interaction.guild;
+      if (!guild) return await interaction.editReply("Bot is not in a server.");
+
       for (const [name, color] of ranks.reverse()) {
         await guild.roles.create({
           name,
@@ -96,10 +107,11 @@ client.on("messageCreate", async message => {
           reason: "TSVM Black Ledger hierarchy"
         });
       }
-      await replyMsg.edit("All TSVM roles have been created successfully ✅");
+
+      await interaction.editReply("All TSVM roles have been created successfully ✅");
     } catch (err) {
       console.error("Error creating roles:", err);
-      await replyMsg.edit("Failed to create roles. Check bot permissions and role hierarchy.");
+      await interaction.editReply("Failed to create roles. Check bot permissions and role hierarchy.");
     }
   }
 });
