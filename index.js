@@ -1,122 +1,137 @@
-// index.js
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require("discord.js");
+const { 
+  Client, 
+  GatewayIntentBits, 
+  REST, 
+  Routes, 
+  SlashCommandBuilder 
+} = require("discord.js");
 const express = require("express");
 
-// --- Environment variables ---
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 
-if (!TOKEN || !CLIENT_ID || !GUILD_ID) {
-  console.error("Missing required environment variables: TOKEN, CLIENT_ID, or GUILD_ID");
-  process.exit(1);
-}
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// --- Discord client ---
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
-});
+/* ---------------- WEB SERVER (RENDER KEEP ALIVE) ---------------- */
+const app = express();
+app.get("/", (req, res) => res.send("TSVM Bot is running."));
+app.listen(3000, () => console.log("Web server active"));
 
-// --- TSVM Role hierarchy ---
-const ranks = [
-  ["☠ The Black Sovereign", "#1A0000"],
-  ["♠ The Obsidian Don", "#2B0000"],
+/* ---------------- TSVM ROLE LIST (LOWEST → HIGHEST) ---------------- */
+const tsvmRoles = [
+  // 🟡 Low Tier → Yellow
+  { name: "⌖ Contact", color: "#FFFF66" },
+  { name: "⌘ Asset", color: "#FFEB33" },
+  { name: "✦ Prospect", color: "#FFE000" },
 
-  ["♛ Crimson Regent III", "#3B0000"],
-  ["♛ Crimson Regent II", "#4A0000"],
-  ["♛ Crimson Regent I", "#5A0000"],
+  // 🟠 Initiates → Yellow-Orange
+  { name: "✪ Initiate I", color: "#FFD633" },
+  { name: "✫ Initiate II", color: "#FFCC00" },
+  { name: "✬ Initiate III", color: "#FFB800" },
 
-  ["♦ Vendetta Marshal III", "#6B0000"],
-  ["♦ Vendetta Marshal II", "#7A0000"],
-  ["♦ Vendetta Marshal I", "#8A0000"],
+  // 🟠 Syndicate Agents → Orange
+  { name: "⚜ Syndicate Agent I", color: "#FFA500" },
+  { name: "⚚ Syndicate Agent II", color: "#FF9500" },
+  { name: "✵ Syndicate Agent III", color: "#FF8500" },
 
-  ["♣ Blood Executor III", "#9B0000"],
-  ["♣ Blood Executor II", "#B00000"],
-  ["♣ Blood Executor I", "#C40000"],
+  // 🟠/🟥 Night Operatives → Orange-Red
+  { name: "☾ Night Operative I", color: "#FF751A" },
+  { name: "☽ Night Operative II", color: "#FF6600" },
+  { name: "⛧ Night Operative III", color: "#FF4D00" },
 
-  ["♜ Crypt Broker III", "#7A1F1F"],
-  ["♜ Crypt Broker II", "#8A2B2B"],
-  ["♜ Crypt Broker I", "#9B3A3A"],
+  // 🟥 Crypt Brokers → Red
+  { name: "♖ Crypt Broker I", color: "#FF3300" },
+  { name: "♖ Crypt Broker II", color: "#FF1A00" },
+  { name: "♖ Crypt Broker III", color: "#FF0000" },
 
-  ["☽ Night Operative III", "#1E1E1E"],
-  ["☽ Night Operative II", "#2E2E2E"],
-  ["☽ Night Operative I", "#3E3E3E"],
+  // 🟥 Blood Executors → Dark Red
+  { name: "♣ Blood Executor I", color: "#E60000" },
+  { name: "♣ Blood Executor II", color: "#CC0000" },
+  { name: "♣ Blood Executor III", color: "#B30000" },
 
-  ["✠ Syndicate Agent III", "#1F2A2E"],
-  ["✠ Syndicate Agent II", "#2F3A3E"],
-  ["✠ Syndicate Agent I", "#3F4A4E"],
+  // 🟥 Vendetta Marshals → Deeper Red
+  { name: "♦ Vendetta Marshal I", color: "#990000" },
+  { name: "♦ Vendetta Marshal II", color: "#800000" },
+  { name: "♦ Vendetta Marshal III", color: "#660000" },
 
-  ["○ Initiate III", "#004422"],
-  ["○ Initiate II", "#006633"],
-  ["○ Initiate I", "#008844"],
+  // 🟥 Crimson Regents → Deepest Red
+  { name: "♛ Crimson Regent I", color: "#4D0000" },
+  { name: "♛ Crimson Regent II", color: "#330000" },
+  { name: "♛ Crimson Regent III", color: "#1A0000" },
 
-  ["△ Prospect", "#2A2A2A"],
-  ["▽ Asset", "#3A3A3A"],
-  ["□ Contact", "#4A4A4A"]
+  // 🖤 Inner Circle → Almost Black Red
+  { name: "♠ Obsidian Don", color: "#0D0000" },
+  { name: "☠ Black Sovereign", color: "#000000" }
 ];
 
-// --- Express server to keep bot alive on Render ---
-const app = express();
-const PORT = process.env.PORT || 3000;
-app.get("/", (req, res) => res.send("TSVM bot is alive."));
-app.listen(PORT, () => console.log(`Web server running on port ${PORT}`));
-
-// --- Register slash command ---
+/* ---------------- SLASH COMMANDS ---------------- */
 const commands = [
-  new SlashCommandBuilder()
-    .setName("rolecreate")
-    .setDescription("Creates the full TSVM hierarchy")
+  new SlashCommandBuilder().setName("setuproles").setDescription("Create all TSVM roles"),
+  new SlashCommandBuilder().setName("eraseroles").setDescription("Delete all TSVM roles")
 ].map(cmd => cmd.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
 (async () => {
   try {
-    console.log("Registering slash commands...");
     await rest.put(
       Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
       { body: commands }
     );
-    console.log("Slash commands registered successfully ✅");
+    console.log("Slash commands registered");
   } catch (err) {
-    console.error("Error registering slash commands:", err);
+    console.error("Slash command error:", err);
   }
 })();
 
-// --- Ready event ---
+/* ---------------- BOT READY ---------------- */
 client.once("ready", () => {
-  console.log(`Logged in as ${client.user.tag} ✅`);
+  console.log(`Logged in as ${client.user.tag}`);
 });
 
-// --- Slash command handler ---
+/* ---------------- INTERACTIONS ---------------- */
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
-  if (interaction.commandName === "rolecreate") {
-    try {
-      await interaction.reply("Starting TSVM role creation... this may take a moment.");
+  try {
+    /* ---------- CREATE ROLES ---------- */
+    if (interaction.commandName === "setuproles") {
+      await interaction.reply("Creating TSVM roles…");
 
-      const guild = interaction.guild;
-      if (!guild) return await interaction.editReply("Bot is not in a server.");
-
-      for (const [name, color] of ranks.reverse()) {
-        await guild.roles.create({
-          name,
-          color,
-          hoist: true,
-          reason: "TSVM Black Ledger hierarchy"
-        });
+      for (const role of tsvmRoles) {
+        const exists = interaction.guild.roles.cache.find(r => r.name === role.name);
+        if (!exists) {
+          await interaction.guild.roles.create({
+            name: role.name,
+            color: role.color,
+            reason: "TSVM Rank System"
+          });
+        }
       }
 
-      await interaction.editReply("All TSVM roles have been created successfully ✅");
-    } catch (err) {
-      console.error("Error creating roles:", err);
-      await interaction.editReply("Failed to create roles. Check bot permissions and role hierarchy.");
+      await interaction.followUp("TSVM roles created and ordered.");
+    }
+
+    /* ---------- DELETE ROLES ---------- */
+    if (interaction.commandName === "eraseroles") {
+      await interaction.reply("Removing TSVM roles…");
+
+      for (const role of tsvmRoles) {
+        const found = interaction.guild.roles.cache.find(r => r.name === role.name);
+        if (found) await found.delete("TSVM reset");
+      }
+
+      await interaction.followUp("All TSVM roles deleted.");
+    }
+
+  } catch (err) {
+    console.error("Command error:", err);
+    if (!interaction.replied) {
+      await interaction.reply("An error occurred.");
     }
   }
 });
 
-// --- Login with error handling ---
-client.login(TOKEN)
-  .then(() => console.log("Bot successfully logged in!"))
-  .catch(err => console.error("Failed to login:", err));
+/* ---------------- LOGIN ---------------- */
+client.login(TOKEN);
