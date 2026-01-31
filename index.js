@@ -1,13 +1,18 @@
+// index.js
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require("discord.js");
+const express = require("express");
 
+// Environment variables set in Render
 const TOKEN = process.env.TOKEN;
-const CLIENT_ID = process.env.CLIENT_ID; // your bot ID
-const GUILD_ID = process.env.GUILD_ID;   // the server ID
+const CLIENT_ID = process.env.CLIENT_ID;
+const GUILD_ID = process.env.GUILD_ID;
 
+// Discord client
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
+// TSVM Role hierarchy
 const ranks = [
   ["☠ The Black Sovereign", "#1A0000"],
   ["♠ The Obsidian Don", "#2B0000"],
@@ -45,7 +50,7 @@ const ranks = [
   ["□ Contact", "#4A4A4A"]
 ];
 
-// Register the slash command
+// Register slash command
 const commands = [
   new SlashCommandBuilder()
     .setName("rolecreate")
@@ -67,17 +72,23 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
   }
 })();
 
-// Ready
+// Express server to keep bot alive on Render
+const app = express();
+app.get("/", (req, res) => res.send("TSVM bot is alive."));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Web server running on port ${PORT}`));
+
+// Bot ready
 client.once("ready", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
-// Interaction handler
+// Slash command handler
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === "rolecreate") {
-    await interaction.reply("Creating TSVM roles... This may take a moment.");
+    await interaction.reply("Creating TSVM roles... this may take a moment.");
 
     const guild = interaction.guild;
     if (!guild) return interaction.editReply("Bot is not in a server.");
