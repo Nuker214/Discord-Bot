@@ -1,4 +1,8 @@
-const { Client, GatewayIntentBits } = require("discord.js");
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require("discord.js");
+
+const TOKEN = process.env.TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID; // your bot ID
+const GUILD_ID = process.env.GUILD_ID;   // the server ID
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
@@ -41,22 +45,55 @@ const ranks = [
   ["□ Contact", "#4A4A4A"]
 ];
 
-client.once("ready", async () => {
-  console.log("TSVM bot online.");
+// Register the slash command
+const commands = [
+  new SlashCommandBuilder()
+    .setName("rolecreate")
+    .setDescription("Creates the full TSVM hierarchy")
+].map(cmd => cmd.toJSON());
 
-  const guild = client.guilds.cache.first();
-  if (!guild) return console.log("Bot not in a server");
+const rest = new REST({ version: "10" }).setToken(TOKEN);
 
-  for (const [name, color] of ranks.reverse()) {
-    await guild.roles.create({
-      name,
-      color,
-      hoist: true,
-      reason: "TSVM Black Ledger hierarchy"
-    });
+(async () => {
+  try {
+    console.log("Registering slash commands...");
+    await rest.put(
+      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+      { body: commands }
+    );
+    console.log("Slash commands registered.");
+  } catch (err) {
+    console.error(err);
   }
+})();
 
-  console.log("All TSVM roles deployed.");
+// Ready
+client.once("ready", () => {
+  console.log(`Logged in as ${client.user.tag}`);
 });
 
-client.login(process.env.TOKEN);
+// Interaction handler
+client.on("interactionCreate", async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === "rolecreate") {
+    await interaction.reply("Creating TSVM roles... This may take a moment.");
+
+    const guild = interaction.guild;
+    if (!guild) return interaction.editReply("Bot is not in a server.");
+
+    for (const [name, color] of ranks.reverse()) {
+      await guild.roles.create({
+        name,
+        color,
+        hoist: true,
+        reason: "TSVM Black Ledger hierarchy"
+      });
+    }
+
+    await interaction.editReply("All TSVM roles have been created successfully.");
+  }
+});
+
+// Login
+client.login(TOKEN);
