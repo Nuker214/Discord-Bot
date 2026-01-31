@@ -20,49 +20,40 @@ app.listen(3000, () => console.log("Web server active"));
 
 /* ---------------- TSVM ROLE LIST (LOWEST → HIGHEST) ---------------- */
 const tsvmRoles = [
-  // 🟡 Low Tier → Yellow
   { name: "⌖ Contact", color: "#FFFF66" },
   { name: "⌘ Asset", color: "#FFEB33" },
   { name: "✦ Prospect", color: "#FFE000" },
 
-  // 🟠 Initiates → Yellow-Orange
   { name: "✪ Initiate I", color: "#FFD633" },
   { name: "✫ Initiate II", color: "#FFCC00" },
   { name: "✬ Initiate III", color: "#FFB800" },
 
-  // 🟠 Syndicate Agents → Orange
   { name: "⚜ Syndicate Agent I", color: "#FFA500" },
   { name: "⚚ Syndicate Agent II", color: "#FF9500" },
   { name: "✵ Syndicate Agent III", color: "#FF8500" },
 
-  // 🟠/🟥 Night Operatives → Orange-Red
   { name: "☾ Night Operative I", color: "#FF751A" },
   { name: "☽ Night Operative II", color: "#FF6600" },
   { name: "⛧ Night Operative III", color: "#FF4D00" },
 
-  // 🟥 Crypt Brokers → Red
   { name: "♖ Crypt Broker I", color: "#FF3300" },
   { name: "♖ Crypt Broker II", color: "#FF1A00" },
   { name: "♖ Crypt Broker III", color: "#FF0000" },
 
-  // 🟥 Blood Executors → Dark Red
   { name: "♣ Blood Executor I", color: "#E60000" },
   { name: "♣ Blood Executor II", color: "#CC0000" },
   { name: "♣ Blood Executor III", color: "#B30000" },
 
-  // 🟥 Vendetta Marshals → Deeper Red
   { name: "♦ Vendetta Marshal I", color: "#990000" },
   { name: "♦ Vendetta Marshal II", color: "#800000" },
   { name: "♦ Vendetta Marshal III", color: "#660000" },
 
-  // 🟥 Crimson Regents → Deepest Red
   { name: "♛ Crimson Regent I", color: "#4D0000" },
   { name: "♛ Crimson Regent II", color: "#330000" },
   { name: "♛ Crimson Regent III", color: "#1A0000" },
 
-  // 🖤 Inner Circle → Almost Black Red
   { name: "♠ Obsidian Don", color: "#0D0000" },
-  { name: "☠ Black Sovereign", color: "#000000" }
+  { name: "☠ Black Sovereign", color: "#010101" } // fixed visible black
 ];
 
 /* ---------------- SLASH COMMANDS ---------------- */
@@ -95,22 +86,25 @@ client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
   try {
+    const guild = interaction.guild;
+
     /* ---------- CREATE ROLES ---------- */
     if (interaction.commandName === "setuproles") {
       await interaction.reply("Creating TSVM roles…");
 
       for (const role of tsvmRoles) {
-        const exists = interaction.guild.roles.cache.find(r => r.name === role.name);
+        const exists = guild.roles.cache.find(r => r.name === role.name);
         if (!exists) {
-          await interaction.guild.roles.create({
+          await guild.roles.create({
             name: role.name,
             color: role.color,
+            hoist: true,          // display separately
             reason: "TSVM Rank System"
           });
         }
       }
 
-      await interaction.followUp("TSVM roles created and ordered.");
+      await interaction.followUp("✅ TSVM roles created and ordered.");
     }
 
     /* ---------- DELETE ROLES ---------- */
@@ -118,17 +112,17 @@ client.on("interactionCreate", async interaction => {
       await interaction.reply("Removing TSVM roles…");
 
       for (const role of tsvmRoles) {
-        const found = interaction.guild.roles.cache.find(r => r.name === role.name);
+        const found = guild.roles.cache.find(r => r.name === role.name);
         if (found) await found.delete("TSVM reset");
       }
 
-      await interaction.followUp("All TSVM roles deleted.");
+      await interaction.followUp("🗑️ All TSVM roles deleted.");
     }
 
   } catch (err) {
     console.error("Command error:", err);
     if (!interaction.replied) {
-      await interaction.reply("An error occurred.");
+      await interaction.reply("❌ An error occurred.");
     }
   }
 });
