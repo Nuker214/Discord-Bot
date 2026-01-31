@@ -16,7 +16,11 @@ const PREFIX = ".";
 
 // --- Discord client ---
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
 });
 
 // --- TSVM Role hierarchy ---
@@ -57,7 +61,7 @@ const ranks = [
   ["□ Contact", "#4A4A4A"]
 ];
 
-// --- Express server to stay alive on Render ---
+// --- Express server to keep bot alive on Render ---
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.get("/", (req, res) => res.send("TSVM bot is alive."));
@@ -77,10 +81,10 @@ client.on("messageCreate", async message => {
   const command = args.shift().toLowerCase();
 
   if (command === "rolecreate") {
-    const guild = message.guild;
-    if (!guild) return message.reply("This command can only be used in a server.");
+    const guild = client.guilds.cache.get(GUILD_ID);
+    if (!guild) return message.reply("Bot is not in the server.");
 
-    // Immediate reply to prevent timeout
+    // Immediate reply to prevent Discord timeout
     const replyMsg = await message.reply("Starting TSVM role creation... this may take a moment.");
 
     try {
@@ -92,10 +96,10 @@ client.on("messageCreate", async message => {
           reason: "TSVM Black Ledger hierarchy"
         });
       }
-      await replyMsg.edit("All TSVM roles have been created ✅");
+      await replyMsg.edit("All TSVM roles have been created successfully ✅");
     } catch (err) {
       console.error("Error creating roles:", err);
-      await replyMsg.edit("Failed to create roles. Make sure the bot has permission to Manage Roles and is higher than the roles being created.");
+      await replyMsg.edit("Failed to create roles. Check bot permissions and role hierarchy.");
     }
   }
 });
