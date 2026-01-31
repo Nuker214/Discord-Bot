@@ -19,40 +19,50 @@ app.get("/", (req, res) => res.send("TSVM Bot is running."));
 app.listen(3000, () => console.log("Web server active"));
 
 /* ---------------- TSVM ROLE LIST (LOWEST → HIGHEST) ---------------- */
-  ["☠ The Black Sovereign", "#1A0000"],
-  ["♠ The Obsidian Don", "#2B0000"],
+const tsvmRoles = [
+  // 🟡 Low Tier → Yellow
+  { name: "⌖ Contact", color: "#FFFF66" },
+  { name: "⌘ Asset", color: "#FFEB33" },
+  { name: "✦ Prospect", color: "#FFE000" },
 
-  ["♛ Crimson Regent III", "#3B0000"],
-  ["♛ Crimson Regent II", "#4A0000"],
-  ["♛ Crimson Regent I", "#5A0000"],
+  // 🟠 Initiates → Yellow-Orange
+  { name: "✪ Initiate I", color: "#FFD633" },
+  { name: "✫ Initiate II", color: "#FFCC00" },
+  { name: "✬ Initiate III", color: "#FFB800" },
 
-  ["♦ Vendetta Marshal III", "#6B0000"],
-  ["♦ Vendetta Marshal II", "#7A0000"],
-  ["♦ Vendetta Marshal I", "#8A0000"],
+  // 🟠 Syndicate Agents → Orange
+  { name: "⚜ Syndicate Agent I", color: "#FFA500" },
+  { name: "⚚ Syndicate Agent II", color: "#FF9500" },
+  { name: "✵ Syndicate Agent III", color: "#FF8500" },
 
-  ["♣ Blood Executor III", "#9B0000"],
-  ["♣ Blood Executor II", "#B00000"],
-  ["♣ Blood Executor I", "#C40000"],
+  // 🟠/🟥 Night Operatives → Orange-Red
+  { name: "☾ Night Operative I", color: "#FF751A" },
+  { name: "☽ Night Operative II", color: "#FF6600" },
+  { name: "⛧ Night Operative III", color: "#FF4D00" },
 
-  ["♜ Crypt Broker III", "#7A1F1F"],
-  ["♜ Crypt Broker II", "#8A2B2B"],
-  ["♜ Crypt Broker I", "#9B3A3A"],
+  // 🟥 Crypt Brokers → Red
+  { name: "♖ Crypt Broker I", color: "#FF3300" },
+  { name: "♖ Crypt Broker II", color: "#FF1A00" },
+  { name: "♖ Crypt Broker III", color: "#FF0000" },
 
-  ["☽ Night Operative III", "#1E1E1E"],
-  ["☽ Night Operative II", "#2E2E2E"],
-  ["☽ Night Operative I", "#3E3E3E"],
+  // 🟥 Blood Executors → Dark Red
+  { name: "♣ Blood Executor I", color: "#E60000" },
+  { name: "♣ Blood Executor II", color: "#CC0000" },
+  { name: "♣ Blood Executor III", color: "#B30000" },
 
-  ["✠ Syndicate Agent III", "#1F2A2E"],
-  ["✠ Syndicate Agent II", "#2F3A3E"],
-  ["✠ Syndicate Agent I", "#3F4A4E"],
+  // 🟥 Vendetta Marshals → Deeper Red
+  { name: "♦ Vendetta Marshal I", color: "#990000" },
+  { name: "♦ Vendetta Marshal II", color: "#800000" },
+  { name: "♦ Vendetta Marshal III", color: "#660000" },
 
-  ["○ Initiate III", "#004422"],
-  ["○ Initiate II", "#006633"],
-  ["○ Initiate I", "#008844"],
+  // 🟥 Crimson Regents → Deepest Red
+  { name: "♛ Crimson Regent I", color: "#4D0000" },
+  { name: "♛ Crimson Regent II", color: "#330000" },
+  { name: "♛ Crimson Regent III", color: "#1A0000" },
 
-  ["△ Prospect", "#2A2A2A"],
-  ["▽ Asset", "#3A3A3A"],
-  ["□ Contact", "#4A4A4A"]
+  // 🖤 Inner Circle → Almost Black Red
+  { name: "♠ Obsidian Don", color: "#0D0000" },
+  { name: "☠ Black Sovereign", color: "#000000" }
 ];
 
 /* ---------------- SLASH COMMANDS ---------------- */
