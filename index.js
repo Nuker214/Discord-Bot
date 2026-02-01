@@ -1,215 +1,246 @@
-const { 
-  Client, 
-  GatewayIntentBits, 
-  REST, 
-  Routes, 
-  SlashCommandBuilder 
-} = require("discord.js");
-const express = require("express");
+// index.js
+// Discord.js v14 Ranking Bot with /ranking setup and gradient-style embeds
 
+import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, PermissionsBitField } from 'discord.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// ENV VARIABLES (set these in Render)
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// BOT CLIENT
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers
+  ]
+});
 
-/* ---------------- WEB SERVER ---------------- */
-const app = express();
-app.get("/", (req, res) => res.send("TSVM Bot is running."));
-app.listen(3000, () => console.log("Web server active"));
-
-/* ---------------- TSVM ROLE LIST ---------------- */
-const tsvmRoles = [
-  { name: "⌖ Contact", color: "#FFFF66" },
-  { name: "⌘ Asset", color: "#FFEB33" },
-  { name: "✦ Prospect", color: "#FFE000" },
-
-  { name: "✪ Initiate I", color: "#FFD633" },
-  { name: "✫ Initiate II", color: "#FFCC00" },
-  { name: "✬ Initiate III", color: "#FFB800" },
-
-  { name: "⚜ Syndicate Agent I", color: "#FFA500" },
-  { name: "⚚ Syndicate Agent II", color: "#FF9500" },
-  { name: "✵ Syndicate Agent III", color: "#FF8500" },
-
-  { name: "☾ Night Operative I", color: "#FF751A" },
-  { name: "☽ Night Operative II", color: "#FF6600" },
-  { name: "⛧ Night Operative III", color: "#FF4D00" },
-
-  { name: "♖ Crypt Broker I", color: "#FF3300" },
-  { name: "♖ Crypt Broker II", color: "#FF1A00" },
-  { name: "♖ Crypt Broker III", color: "#FF0000" },
-
-  { name: "♣ Blood Executor I", color: "#E60000" },
-  { name: "♣ Blood Executor II", color: "#CC0000" },
-  { name: "♣ Blood Executor III", color: "#B30000" },
-
-  { name: "♦ Vendetta Marshal I", color: "#990000" },
-  { name: "♦ Vendetta Marshal II", color: "#800000" },
-  { name: "♦ Vendetta Marshal III", color: "#660000" },
-
-  { name: "♛ Crimson Regent I", color: "#4D0000" },
-  { name: "♛ Crimson Regent II", color: "#330000" },
-  { name: "♛ Crimson Regent III", color: "#1A0000" },
-
-  { name: "♠ Obsidian Don", color: "#0D0000" },
-  { name: "☠ Black Sovereign", color: "#010101" } // fixed visible black
+// ROLE TIERS (WITH I / II / III)
+const RANKS = [
+  "Observer I","Observer II","Observer III",
+  "Initiate I","Initiate II","Initiate III",
+  "Novitiate I","Novitiate II","Novitiate III",
+  "Apprentice I","Apprentice II","Apprentice III",
+  "Intermediate I","Intermediate II","Intermediate III",
+  "Practitioner I","Practitioner II","Practitioner III",
+  "Proficient I","Proficient II","Proficient III",
+  "Advanced I","Advanced II","Advanced III",
+  "Experienced I","Experienced II","Experienced III",
+  "Advanced Practitioner I","Advanced Practitioner II","Advanced Practitioner III",
+  "Ascendant I","Ascendant II","Ascendant III",
+  "Transcendent I","Transcendent II","Transcendent III",
+  "Luminary I","Luminary II","Luminary III",
+  "Ascendant Prime I","Ascendant Prime II","Ascendant Prime III",
+  "Transcendent Prime I","Transcendent Prime II","Transcendent Prime III",
+  "Luminary Prime I","Luminary Prime II","Luminary Prime III",
+  "Luminary Eternal I","Luminary Eternal II","Luminary Eternal III",
+  "Ascendant Eternal I","Ascendant Eternal II","Ascendant Eternal III",
+  "Transcendent Eternal I","Transcendent Eternal II","Transcendent Eternal III",
+  "Omniscient I","Omniscient II","Omniscient III",
+  "Nexithal I","Nexithal II","Nexithal III",
+  "Zethithal I","Zethithal II","Zethithal III"
 ];
 
-/* ---------------- TSVM CHANNELS ---------------- */
-const fancyFont = text => text.split("").map(c => {
-  const code = c.charCodeAt(0);
-  if (code >= 65 && code <= 90) return String.fromCodePoint(0x1D400 + (code - 65)); // A-Z
-  if (code >= 97 && code <= 122) return String.fromCodePoint(0x1D41A + (code - 97)); // a-z
-  return c;
-}).join("");
-
-const tsvmCategories = [
-  {
-    name: "📢 Welcome & Info",
-    channels: [
-      "📢 announcements","📜 rules","📝 clan-info","💡 faq","🎖️ achievements",
-      "📅 events","🆕 updates","🔗 resources","🗺️ map","📌 pinned","💬 welcome-chat","👋 introductions"
-    ]
-  },
-  {
-    name: "💬 Clan Chat",
-    channels: [
-      "💬 general-chat","🎮 game-chat","🗡️ strategy","📸 media","🎶 music",
-      "🎲 events","💭 ideas","🧩 misc","📌 pinned","🗒️ notes","💬 memes","🎯 polls"
-    ]
-  },
-  {
-    name: "⚔️ Operations",
-    channels: [
-      "⚔️ operations","📊 reports","🎯 objectives","🗂️ archives","📝 notes",
-      "💡 tactics","📌 reminders","🔍 intel","👑 command","🗣️ coordination","🎤 briefing","🎧 lounge"
-    ]
-  },
-  {
-    name: "📘 Training",
-    channels: [
-      "📘 training","🏅 progress","🤝 mentor-chat","📝 exercises","💡 tips",
-      "🗂️ manuals","📊 tracking","🎯 challenges","💬 discussion","📚 study","📝 logs","💡 ideas"
-    ]
-  },
-  {
-    name: "🤝 Clan Allies",
-    channels: [
-      "🤝 allies-chat","📜 treaties","🎯 joint-strategy","📊 shared-reports","💡 alliance-ideas",
-      "📝 alliance-notes","📸 allies-media","🎲 joint-events","🔗 links","📌 pinned","💬 discussion","🎯 polls"
-    ]
-  },
-  {
-    name: "⚔️ Clan Wars",
-    channels: [
-      "⚔️ war-chat","🎯 war-objectives","📊 war-reports","📝 war-strategy","💡 war-ideas",
-      "📌 war-pins","📸 war-media","🗂️ war-archives","💬 war-discussion","🎯 battle-plans","📊 war-stats","💡 tactics"
-    ]
-  }
-];
-
-/* ---------------- SLASH COMMANDS ---------------- */
+// SLASH COMMAND
 const commands = [
-  new SlashCommandBuilder().setName("setuproles").setDescription("Create all TSVM roles"),
-  new SlashCommandBuilder().setName("eraseroles").setDescription("Delete all TSVM roles"),
-  new SlashCommandBuilder().setName("setupchannels").setDescription("Create all TSVM channels"),
-  new SlashCommandBuilder().setName("erasechannels").setDescription("Delete all TSVM channels")
+  new SlashCommandBuilder()
+    .setName('ranking')
+    .setDescription('Ranking system commands')
+    .addSubcommand(sub =>
+      sub
+        .setName('setup')
+        .setDescription('Create all ranking roles')
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName('set')
+        .setDescription('Set a user rank')
+        .addUserOption(opt =>
+          opt.setName('user')
+            .setDescription('User to rank')
+            .setRequired(true)
+        )
+        .addStringOption(opt =>
+          opt.setName('rank')
+            .setDescription('Rank name')
+            .setRequired(true)
+            .addChoices(...RANKS.map(r => ({ name: r, value: r })))
+        )
+    )
 ].map(cmd => cmd.toJSON());
 
-const rest = new REST({ version: "10" }).setToken(TOKEN);
+// REGISTER COMMANDS
+const rest = new REST({ version: '10' }).setToken(TOKEN);
+
 (async () => {
   try {
-    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
-    console.log("Slash commands registered");
-  } catch (err) { console.error("Slash command error:", err); }
+    console.log('Registering slash commands...');
+
+    await rest.put(
+      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+      { body: commands }
+    );
+
+    console.log('Commands registered.');
+  } catch (err) {
+    console.error(err);
+  }
 })();
 
-/* ---------------- BOT READY ---------------- */
-client.once("ready", () => console.log(`Logged in as ${client.user.tag}`));
+// READY EVENT
+client.once('ready', () => {
+  console.log(`Logged in as ${client.user.tag}`);
+});
 
-/* ---------------- INTERACTIONS ---------------- */
-client.on("interactionCreate", async interaction => {
+// COLOR GRADIENT GENERATOR
+function generateGradient(stops, steps) {
+  const result = [];
+
+  const segments = stops.length - 1;
+  const stepsPerSegment = Math.floor(steps / segments);
+
+  for (let s = 0; s < segments; s++) {
+    const [r1, g1, b1] = stops[s];
+    const [r2, g2, b2] = stops[s + 1];
+
+    for (let i = 0; i < stepsPerSegment; i++) {
+      const t = i / stepsPerSegment;
+
+      const r = Math.round(r1 + (r2 - r1) * t);
+      const g = Math.round(g1 + (g2 - g1) * t);
+      const b = Math.round(b1 + (b2 - b1) * t);
+
+      result.push((r << 16) + (g << 8) + b);
+    }
+  }
+
+  // Fill remaining if needed
+  while (result.length < steps) {
+    const [r, g, b] = stops[stops.length - 1];
+    result.push((r << 16) + (g << 8) + b);
+  }
+
+  return result;
+}
+
+// INTERACTIONS
+client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
-  try {
+  if (interaction.commandName !== 'ranking') return;
+
+  // PERMISSION CHECK
+  if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    return interaction.reply({
+      content: '❌ You need Administrator permission.',
+      ephemeral: true
+    });
+  }
+
+  const sub = interaction.options.getSubcommand();
+
+  // /ranking setup
+  if (sub === 'setup') {
+    await interaction.deferReply({ ephemeral: true });
+
     const guild = interaction.guild;
 
-    /* ---------- CREATE ROLES ---------- */
-    if (interaction.commandName === "setuproles") {
-      await interaction.reply("Creating TSVM roles…");
+    let created = 0;
 
-      for (const role of tsvmRoles) {
-        const exists = guild.roles.cache.find(r => r.name === role.name);
-        if (!exists) {
-          await guild.roles.create({
-            name: role.name,
-            color: role.color,
-            hoist: true,
-            reason: "TSVM Rank System"
-          });
-        }
+    // Smooth Red → Orange → Yellow gradient (generated)
+    const gradientColors = generateGradient([
+      [255, 26, 26],   // Red
+      [255, 140, 0],   // Orange
+      [255, 215, 0]    // Yellow
+    ], RANKS.length);
+
+    let i = 0;
+
+    for (const rank of RANKS) {
+      let role = guild.roles.cache.find(r => r.name === rank);
+
+      if (!role) {
+        await guild.roles.create({
+          name: rank,
+          color: gradientColors[i],
+          reason: 'Ranking System Setup'
+        });
+
+        created++;
       }
 
-      await interaction.followUp("✅ TSVM roles created and ordered.");
+      i++;
     }
 
-    /* ---------- DELETE ROLES ---------- */
-    if (interaction.commandName === "eraseroles") {
-      await interaction.reply("Removing TSVM roles…");
+    const embed = new EmbedBuilder()
+      .setTitle('✅ Ranking Setup Complete')
+      .setDescription(`Created **${created}** roles with red → orange → yellow fade.`)
+      .setColor(0xff8c00)
+      .setFooter({ text: 'Ranking System' });
 
-      for (const role of tsvmRoles) {
-        const found = guild.roles.cache.find(r => r.name === role.name);
-        if (found) await found.delete("TSVM reset");
-      }
+    return interaction.editReply({ embeds: [embed] });
+  }
 
-      await interaction.followUp("🗑️ All TSVM roles deleted.");
+  // /ranking set
+  if (sub === 'set') {
+    const user = interaction.options.getUser('user');
+    const rank = interaction.options.getString('rank');
+
+    const member = await interaction.guild.members.fetch(user.id);
+
+    // KEEP OLD RANKS (Do NOT remove previous ranks)
+    // No rank removal is performed
+
+
+    // ADD NEW RANK
+    const role = interaction.guild.roles.cache.find(r => r.name === rank);
+
+    if (!role) {
+      return interaction.reply({
+        content: '❌ Role not found. Run /ranking setup first.',
+        ephemeral: true
+      });
     }
 
-    /* ---------- CREATE CHANNELS ---------- */
-    if (interaction.commandName === "setupchannels") {
-      await interaction.reply("Creating TSVM server channels…");
+    await member.roles.add(role);
 
-      for (const cat of tsvmCategories) {
-        let category = guild.channels.cache.find(c => c.name === cat.name && c.type === 4);
-        if (!category) {
-          category = await guild.channels.create({ name: cat.name, type: 4 });
-        }
+    const embed = new EmbedBuilder()
+      .setTitle('🏆 Rank Updated')
+      .setDescription(`**${user.tag}** is now **${rank}**`)
+      .setColor(0xffd700) // Yellow-Gold // Pink-purple gradient look
+      .setThumbnail(user.displayAvatarURL())
+      .setFooter({ text: 'Ranking System' });
 
-        for (const chName of cat.channels) {
-          const fancyName = fancyFont(chName);
-          if (!guild.channels.cache.find(c => c.name === fancyName)) {
-            await guild.channels.create({
-              name: fancyName,
-              type: 0, // Text channels only
-              parent: category.id
-            });
-          }
-        }
-      }
-
-      await interaction.followUp("✅ TSVM channels created.");
-    }
-
-    /* ---------- DELETE CHANNELS ---------- */
-    if (interaction.commandName === "erasechannels") {
-      await interaction.reply("Deleting TSVM server channels…");
-
-      for (const cat of tsvmCategories) {
-        for (const chName of cat.channels) {
-          const found = guild.channels.cache.find(c => c.name === fancyFont(chName));
-          if (found) await found.delete("TSVM channels reset");
-        }
-      }
-
-      await interaction.followUp("🗑️ All TSVM channels deleted.");
-    }
-
-  } catch (err) {
-    console.error("Command error:", err);
-    if (!interaction.replied) await interaction.reply("❌ An error occurred.");
+    return interaction.reply({ embeds: [embed] });
   }
 });
 
-/* ---------------- LOGIN ---------------- */
+// LOGIN
 client.login(TOKEN);
+
+/*
+========================
+HOW TO USE ON RENDER
+========================
+
+1. Install deps:
+   npm install discord.js dotenv
+
+2. Add ENV vars in Render:
+   TOKEN=your_bot_token
+   CLIENT_ID=your_client_id
+   GUILD_ID=your_server_id
+
+3. Start command:
+   node index.js
+
+4. In Discord:
+   /ranking setup   -> creates roles
+   /ranking set     -> assigns rank
+
+========================
+*/
