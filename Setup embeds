@@ -1,0 +1,130 @@
+import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } from "discord.js";
+
+const TOKEN = process.env.DISCORD_TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID;
+const GUILD_ID = process.env.GUILD_ID;
+
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds]
+});
+
+const rankBases = [
+  "Observer",
+  "Initiate",
+  "Novitiate",
+  "Apprentice",
+  "Intermediate",
+  "Practitioner",
+  "Proficient",
+  "Advanced",
+  "Experienced",
+  "Advanced Practitioner",
+  "Ascendant",
+  "Transcendent",
+  "Luminary",
+  "Ascendant Prime",
+  "Transcendent Prime",
+  "Luminary Prime",
+  "Luminary Eternal",
+  "Ascendant Eternal",
+  "Transcendent Eternal",
+  "Omniscient",
+  "Nexithal",
+  "Zethithal"
+];
+
+// builds all I / II / III names
+const allRanks = [];
+for (const base of rankBases) {
+  allRanks.push(`${base} I`);
+  allRanks.push(`${base} II`);
+  allRanks.push(`${base} III`);
+}
+
+// register slash commands
+const commands = [
+  new SlashCommandBuilder()
+    .setName("setupembed")
+    .setDescription("Posts the main setup embed and pings all rank roles"),
+
+  new SlashCommandBuilder()
+    .setName("setupinfo")
+    .setDescription("Posts an embed explaining the rank progression")
+].map(c => c.toJSON());
+
+const rest = new REST({ version: "10" }).setToken(TOKEN);
+
+await rest.put(
+  Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+  { body: commands }
+);
+
+client.once("ready", () => {
+  console.log("Bot online");
+});
+
+client.on("interactionCreate", async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  // -------------------------
+  // /setupembed
+  // -------------------------
+  if (interaction.commandName === "setupembed") {
+
+    const guild = interaction.guild;
+
+    // collect role mentions
+    const mentions = [];
+    for (const name of allRanks) {
+      const role = guild.roles.cache.find(r => r.name === name);
+      if (role) mentions.push(`<@&${role.id}>`);
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle("Server Rank System")
+      .setDescription("All active progression ranks are listed below.")
+      .addFields(
+        { name: "Progression", value: "Every rank has three mastery stages: I, II, III", inline: false },
+        { name: "Climbing", value: "Ranks increase through activity, skill, and contribution", inline: false },
+        { name: "Structure", value: "Higher tiers represent deeper mastery and trust", inline: false }
+      )
+      .setColor(0x8b0000);
+
+    await interaction.reply({
+      content: mentions.join(" "),
+      embeds: [embed]
+    });
+  }
+
+  // -------------------------
+  // /setupinfo
+  // -------------------------
+  if (interaction.commandName === "setupinfo") {
+
+    const embed = new EmbedBuilder()
+      .setTitle("Rank Progression Explained")
+      .setDescription("This is what each rank tier represents in the system.")
+      .addFields(
+        {
+          name: "Foundations",
+          value: "Observer → Initiate → Novitiate → Apprentice\nThese are learning tiers. You are discovering mechanics and rules.",
+          inline: false
+        },
+        {
+          name: "Core Skill",
+          value: "Intermediate → Practitioner → Proficient → Advanced → Experienced\nThese represent functional mastery and reliability.",
+          inline: false
+        },
+        {
+          name: "High Order",
+          value: "Advanced Practitioner → Ascendant → Transcendent → Luminary → Primes → Eternals → Omniscient → Nexithal → Zethithal\nThese represent elite influence, leadership, and mastery of the system.",
+          inline: false
+        }
+      )
+      .setColor(0x4b0082);
+
+    await interaction.reply({ embeds: [embed] });
+  }
+});
+
+client.login(TOKEN);
