@@ -1,4 +1,13 @@
-const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ChannelType, REST, Routes, ActivityType, Colors } = require('discord.js');
+const { 
+    Client, 
+    GatewayIntentBits, 
+    EmbedBuilder, 
+    PermissionsBitField, 
+    ChannelType, 
+    REST, 
+    Routes, 
+    ActivityType 
+} = require('discord.js');
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const GUILD_ID = process.env.GUILD_ID;
@@ -23,60 +32,268 @@ let leaveChannel = null;
 const prefix = '.';
 let commandLogs = [];
 const startTime = new Date();
+const rateLimit = new Map();
 
-class Logger {
+class HUGE_LOGGER {
     static log(type, message, data = null) {
-        const timestamp = new Date().toISOString();
-        const logEntry = `[${timestamp}] [${type}] ${message}`;
-        
-        console.log(logEntry);
-        if (data) console.log(JSON.stringify(data, null, 2));
-        
-        commandLogs.push({ timestamp, type, message, data });
-        if (commandLogs.length > 1000) commandLogs.shift();
-        
+        const timestamp = new Date();
+        const formattedTime = timestamp.toLocaleString('en-US', {
+            timeZone: 'UTC',
+            hour12: true,
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+
         const colors = {
-            'INFO': '\x1b[36m',
-            'SUCCESS': '\x1b[32m',
-            'WARNING': '\x1b[33m',
-            'ERROR': '\x1b[31m',
-            'COMMAND': '\x1b[35m',
-            'SYSTEM': '\x1b[34m',
-            'DEBUG': '\x1b[90m',
-            'MEMORY': '\x1b[93m',
-            'NETWORK': '\x1b[95m'
+            'SYSTEM': '\x1b[45m\x1b[30m', // Magenta background, black text
+            'INFO': '\x1b[46m\x1b[30m', // Cyan background, black text
+            'SUCCESS': '\x1b[42m\x1b[30m', // Green background, black text
+            'WARNING': '\x1b[43m\x1b[30m', // Yellow background, black text
+            'ERROR': '\x1b[41m\x1b[37m', // Red background, white text
+            'COMMAND': '\x1b[44m\x1b[37m', // Blue background, white text
+            'ADMIN_COMMAND': '\x1b[101m\x1b[30m', // Bright red background, black text
+            'MOD_COMMAND': '\x1b[103m\x1b[30m', // Bright yellow background, black text
+            'DEBUG': '\x1b[100m\x1b[37m', // Gray background, white text
+            'MEMORY': '\x1b[105m\x1b[30m', // Bright magenta background, black text
+            'NETWORK': '\x1b[106m\x1b[30m', // Bright cyan background, black text
+            'VERBOSE': '\x1b[47m\x1b[30m', // White background, black text
+            'SECURITY': '\x1b[41m\x1b[1m\x1b[37m', // Red background, bold white text
+            'GOD_MODE': '\x1b[48;5;21m\x1b[38;5;226m\x1b[1m', // Blue background, yellow text, bold
+            'HYPER': '\x1b[48;5;196m\x1b[38;5;226m\x1b[1m', // Bright red background, yellow text
+            'ULTRA': '\x1b[48;5;51m\x1b[38;5;196m\x1b[1m', // Bright cyan background, red text
+            'MEGA': '\x1b[48;5;200m\x1b[38;5;51m\x1b[1m', // Pink background, cyan text
+            'EXTREME': '\x1b[48;5;226m\x1b[38;5;196m\x1b[1m', // Yellow background, red text
+            'SUPER': '\x1b[48;5;82m\x1b[38;5;226m\x1b[1m', // Green background, yellow text
+            'ULTIMATE': '\x1b[48;5;93m\x1b[38;5;51m\x1b[1m', // Purple background, cyan text
+            'FINAL': '\x1b[48;5;196m\x1b[38;5;226m\x1b[5m', // Red background, yellow text, blink
+            'BEAST': '\x1b[48;5;232m\x1b[38;5;196m\x1b[1m', // Black background, red text
+            'LEGENDARY': '\x1b[48;5;57m\x1b[38;5;226m\x1b[1m', // Purple background, yellow text
+            'EPIC': '\x1b[48;5;27m\x1b[38;5;51m\x1b[1m', // Blue background, cyan text
+            'RARE': '\x1b[48;5;22m\x1b[38;5;46m\x1b[1m', // Dark green background, green text
+            'UNCOMMON': '\x1b[48;5;58m\x1b[38;5;220m\x1b[1m', // Brown background, yellow text
+            'COMMON': '\x1b[48;5;240m\x1b[38;5;255m', // Gray background, white text
+            'TRASH': '\x1b[48;5;52m\x1b[38;5;124m', // Dark red background, red text
+            'SPECIAL': '\x1b[48;5;162m\x1b[38;5;226m\x1b[1m\x1b[5m', // Pink background, yellow text, bold blink
+            'UNIQUE': '\x1b[48;5;21m\x1b[38;5;51m\x1b[1m\x1b[4m', // Blue background, cyan text, bold underline
+            'MYTHIC': '\x1b[48;5;93m\x1b[38;5;226m\x1b[1m\x1b[5m\x1b[4m', // Purple background, yellow text, bold blink underline
+            'DIVINE': '\x1b[48;5;51m\x1b[38;5;21m\x1b[1m\x1b[5m', // Cyan background, blue text, bold blink
+            'ETERNAL': '\x1b[48;5;196m\x1b[38;5;51m\x1b[1m\x1b[4m', // Red background, cyan text, bold underline
+            'OMEGA': '\x1b[48;5;232m\x1b[38;5;196m\x1b[1m\x1b[5m\x1b[4m' // Black background, red text, bold blink underline
         };
-        
-        const color = colors[type] || '\x1b[0m';
+
         const reset = '\x1b[0m';
-        
-        console.log(`${color}${logEntry}${reset}`);
+        const color = colors[type] || '\x1b[0m';
+
+        // Random emojis for extra spice
+        const emojis = ['🔥', '⚡', '💥', '🚀', '🎯', '✨', '🌟', '💫', '⭐', '☄️', '🌠', '💎', '🔮', '🎇', '🎆', '🌈', '🌪️', '🌀', '🌊', '💦'];
+        const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+        console.log(`${color}${randomEmoji} [${formattedTime}] [${type}] ${message}${reset}`);
+
+        if (data) {
+            console.log(`${color}📊 DATA: ${JSON.stringify(data, null, 2)}${reset}`);
+        }
+
+        // Store log
+        commandLogs.push({
+            timestamp: timestamp.toISOString(),
+            type,
+            message,
+            data,
+            formattedTime
+        });
+
+        if (commandLogs.length > 10000) commandLogs.shift();
+
+        return {
+            timestamp: timestamp.toISOString(),
+            type,
+            message,
+            data,
+            formattedTime
+        };
     }
-    
+
+    static logGOD_COMMAND(message, command, args, result = null) {
+        const timestamp = new Date();
+        const guild = message.guild;
+        const channel = message.channel;
+        const member = message.member;
+        
+        // GOD MODE LOGGING - EXTREME DETAILS
+        const colors = [
+            '\x1b[48;5;21m\x1b[38;5;226m\x1b[1m',
+            '\x1b[48;5;196m\x1b[38;5;226m\x1b[1m',
+            '\x1b[48;5;51m\x1b[38;5;196m\x1b[1m',
+            '\x1b[48;5;200m\x1b[38;5;51m\x1b[1m',
+            '\x1b[48;5;226m\x1b[38;5;196m\x1b[1m',
+            '\x1b[48;5;82m\x1b[38;5;226m\x1b[1m',
+            '\x1b[48;5;93m\x1b[38;5;51m\x1b[1m'
+        ];
+        
+        const reset = '\x1b[0m';
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        
+        // ASCII ART HEADER
+        console.log(`\n${color}╔════════════════════════════════════════════════════════════════════════════════════════════════════╗${reset}`);
+        console.log(`${color}║                                                                                                    ║${reset}`);
+        console.log(`${color}║  ██████╗  ██████╗ ██████╗     ██████╗ ██████╗ ███╗   ███╗███╗   ███╗ █████╗ ███╗   ██╗██████╗       ║${reset}`);
+        console.log(`${color}║ ██╔════╝ ██╔═══██╗██╔══██╗   ██╔════╝██╔═══██╗████╗ ████║████╗ ████║██╔══██╗████╗  ██║██╔══██╗      ║${reset}`);
+        console.log(`${color}║ ██║  ███╗██║   ██║██║  ██║   ██║     ██║   ██║██╔████╔██║██╔████╔██║███████║██╔██╗ ██║██║  ██║      ║${reset}`);
+        console.log(`${color}║ ██║   ██║██║   ██║██║  ██║   ██║     ██║   ██║██║╚██╔╝██║██║╚██╔╝██║██╔══██║██║╚██╗██║██║  ██║      ║${reset}`);
+        console.log(`${color}║ ╚██████╔╝╚██████╔╝██████╔╝   ╚██████╗╚██████╔╝██║ ╚═╝ ██║██║ ╚═╝ ██║██║  ██║██║ ╚████║██████╔╝      ║${reset}`);
+        console.log(`${color}║  ╚═════╝  ╚═════╝ ╚═════╝     ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝       ║${reset}`);
+        console.log(`${color}║                                                                                                    ║${reset}`);
+        console.log(`${color}╚════════════════════════════════════════════════════════════════════════════════════════════════════╝${reset}\n`);
+
+        // COMMAND DETAILS
+        console.log(`${color}╔════════════════════════════════════════════════════════════════════════════════════════════════════╗${reset}`);
+        console.log(`${color}║                              🚀 GOD MODE COMMAND EXECUTION - ULTIMATE DETAILS                       ║${reset}`);
+        console.log(`${color}╠════════════════════════════════════════════════════════════════════════════════════════════════════╣${reset}`);
+        console.log(`${color}║  🔥 COMMAND: ${command.padEnd(85)} ║${reset}`);
+        console.log(`${color}║  👤 USER: ${message.author.tag.padEnd(87)} ║${reset}`);
+        console.log(`${color}║  🆔 USER ID: ${message.author.id.padEnd(84)} ║${reset}`);
+        console.log(`${color}║  📅 ACCOUNT CREATED: ${message.author.createdAt.toISOString().padEnd(71)} ║${reset}`);
+        console.log(`${color}║  🤖 BOT: ${message.author.bot.toString().padEnd(88)} ║${reset}`);
+        console.log(`${color}║  🏰 SERVER: ${(guild?.name || 'DM').padEnd(86)} ║${reset}`);
+        console.log(`${color}║  🆔 SERVER ID: ${(guild?.id || 'DM').padEnd(84)} ║${reset}`);
+        console.log(`${color}║  👥 SERVER MEMBERS: ${(guild?.memberCount || 'N/A').toString().padEnd(79)} ║${reset}`);
+        console.log(`${color}║  📍 CHANNEL: #${channel.name.padEnd(84)} ║${reset}`);
+        console.log(`${color}║  🆔 CHANNEL ID: ${channel.id.padEnd(83)} ║${reset}`);
+        console.log(`${color}║  📅 CHANNEL CREATED: ${channel.createdAt.toISOString().padEnd(71)} ║${reset}`);
+        console.log(`${color}║  🎭 USER ROLES: ${(member?.roles?.cache?.size || 0).toString().padEnd(82)} ║${reset}`);
+        console.log(`${color}║  👑 HIGHEST ROLE: ${(member?.roles?.highest?.name || 'None').padEnd(79)} ║${reset}`);
+        console.log(`${color}║  🔧 PERMISSIONS: ${(member?.permissions?.toArray().length || 0).toString().padEnd(80)} ║${reset}`);
+        console.log(`${color}║  💾 MEMORY USAGE: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`.padEnd(85) + ` ║${reset}`);
+        console.log(`${color}║  ⏰ BOT UPTIME: ${Math.floor(process.uptime())}s`.padEnd(86) + ` ║${reset}`);
+        console.log(`${color}║  🕐 EXECUTION TIME: ${timestamp.toISOString().padEnd(77)} ║${reset}`);
+        console.log(`${color}║  📝 FULL MESSAGE: ${message.content.substring(0, 70).padEnd(77)} ║${reset}`);
+        console.log(`${color}║  🔧 ARGUMENTS: ${args.join(' ').substring(0, 70).padEnd(77)} ║${reset}`);
+        console.log(`${color}║  ✅ RESULT: ${(result || 'SUCCESS').toString().substring(0, 70).padEnd(77)} ║${reset}`);
+        console.log(`${color}╚════════════════════════════════════════════════════════════════════════════════════════════════════╝${reset}`);
+
+        // DETAILED PERMISSION BREAKDOWN
+        if (member?.permissions) {
+            console.log(`\n${color}╔══════════════════════════════════ PERMISSION BREAKDOWN ═══════════════════════════════════╗${reset}`);
+            const perms = member.permissions.toArray();
+            const adminPerms = perms.filter(p => p.includes('ADMIN') || p.includes('MANAGE'));
+            const modPerms = perms.filter(p => p.includes('KICK') || p.includes('BAN') || p.includes('MODERATE'));
+            const otherPerms = perms.filter(p => !adminPerms.includes(p) && !modPerms.includes(p));
+            
+            if (adminPerms.length > 0) {
+                console.log(`${color}║  ⚠️  ADMIN PERMISSIONS (${adminPerms.length}):`.padEnd(105) + ` ║${reset}`);
+                adminPerms.forEach(perm => {
+                    console.log(`${color}║     • ${perm.padEnd(97)} ║${reset}`);
+                });
+            }
+            
+            if (modPerms.length > 0) {
+                console.log(`${color}║  🛡️  MOD PERMISSIONS (${modPerms.length}):`.padEnd(105) + ` ║${reset}`);
+                modPerms.forEach(perm => {
+                    console.log(`${color}║     • ${perm.padEnd(97)} ║${reset}`);
+                });
+            }
+            
+            if (otherPerms.length > 0) {
+                console.log(`${color}║  🔧 OTHER PERMISSIONS (${otherPerms.length}):`.padEnd(105) + ` ║${reset}`);
+                otherPerms.forEach(perm => {
+                    console.log(`${color}║     • ${perm.padEnd(97)} ║${reset}`);
+                });
+            }
+            console.log(`${color}╚════════════════════════════════════════════════════════════════════════════════════════════════════╝${reset}`);
+        }
+
+        // ROLE BREAKDOWN
+        if (member?.roles?.cache?.size > 0) {
+            console.log(`\n${color}╔════════════════════════════════════ ROLE BREAKDOWN ════════════════════════════════════╗${reset}`);
+            const roles = Array.from(member.roles.cache.values());
+            const roleNames = roles.map(r => r.name).join(', ');
+            console.log(`${color}║  🎭 ROLES (${roles.length}): ${roleNames.substring(0, 90).padEnd(90)} ║${reset}`);
+            console.log(`${color}╚════════════════════════════════════════════════════════════════════════════════════════════════════╝${reset}`);
+        }
+
+        // SYSTEM INFO
+        console.log(`\n${color}╔════════════════════════════════════ SYSTEM INFORMATION ════════════════════════════════════╗${reset}`);
+        console.log(`${color}║  🖥️  NODE.JS: ${process.version.padEnd(88)} ║${reset}`);
+        console.log(`${color}║  🏗️  PLATFORM: ${process.platform} ${process.arch.padEnd(76)} ║${reset}`);
+        console.log(`${color}║  💾 HEAP USED: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`.padEnd(85) + ` ║${reset}`);
+        console.log(`${color}║  📈 HEAP TOTAL: ${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`.padEnd(84) + ` ║${reset}`);
+        console.log(`${color}║  🚀 RSS: ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`.padEnd(90) + ` ║${reset}`);
+        console.log(`${color}║  🔄 UPTIME: ${Math.floor(process.uptime())} seconds`.padEnd(87) + ` ║${reset}`);
+        console.log(`${color}╚════════════════════════════════════════════════════════════════════════════════════════════════════╝${reset}\n`);
+
+        // FINAL ASCII ART
+        console.log(`${color}████████████████████████████████████████████████████████████████████████████████████████████████████████${reset}`);
+        console.log(`${color}██                                                                                                ██${reset}`);
+        console.log(`${color}██  ██╗   ██╗██╗     ███████╗██████╗  ██████╗ ███████╗███████╗██████╗  █████╗ ██╗  ██╗███████╗██╗  ██╗  ██${reset}`);
+        console.log(`${color}██  ██║   ██║██║     ██╔════╝██╔══██╗██╔═══██╗██╔════╝██╔════╝██╔══██╗██╔══██╗██║ ██╔╝██╔════╝██║  ██║  ██${reset}`);
+        console.log(`${color}██  ██║   ██║██║     █████╗  ██████╔╝██║   ██║███████╗█████╗  ██████╔╝███████║█████╔╝ █████╗  ███████║  ██${reset}`);
+        console.log(`${color}██  ██║   ██║██║     ██╔══╝  ██╔══██╗██║   ██║╚════██║██╔══╝  ██╔══██╗██╔══██║██╔═██╗ ██╔══╝  ██╔══██║  ██${reset}`);
+        console.log(`${color}██  ╚██████╔╝███████╗███████╗██║  ██║╚██████╔╝███████║███████╗██║  ██║██║  ██║██║  ██╗███████╗██║  ██║  ██${reset}`);
+        console.log(`${color}██   ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝  ██${reset}`);
+        console.log(`${color}██                                                                                                ██${reset}`);
+        console.log(`${color}████████████████████████████████████████████████████████████████████████████████████████████████████████${reset}\n`);
+
+        // Store log
+        const logEntry = {
+            timestamp: timestamp.toISOString(),
+            type: 'GOD_COMMAND',
+            message: `${command} executed by ${message.author.tag}`,
+            data: {
+                user: message.author.tag,
+                userId: message.author.id,
+                command: command,
+                args: args,
+                server: guild?.name,
+                channel: channel.name,
+                roles: member?.roles?.cache?.size,
+                permissions: member?.permissions?.toArray(),
+                memory: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`
+            },
+            formattedTime: timestamp.toLocaleString()
+        };
+
+        commandLogs.push(logEntry);
+        if (commandLogs.length > 10000) commandLogs.shift();
+
+        return logEntry;
+    }
+
     static getStats() {
         const now = new Date();
         const uptime = now - startTime;
-        const hours = Math.floor(uptime / 3600000);
-        const minutes = Math.floor((uptime % 3600000) / 60000);
-        const seconds = Math.floor((uptime % 60000) / 1000);
-        
+        const days = Math.floor(uptime / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((uptime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((uptime % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((uptime % (1000 * 60)) / 1000);
+
         return {
-            uptime: `${hours}h ${minutes}m ${seconds}s`,
+            uptime: `${days}d ${hours}h ${minutes}m ${seconds}s`,
             startTime: startTime.toISOString(),
-            totalCommands: commandLogs.filter(log => log.type === 'COMMAND').length,
+            totalCommands: commandLogs.filter(log => log.type.includes('COMMAND')).length,
             totalErrors: commandLogs.filter(log => log.type === 'ERROR').length,
-            memoryUsage: process.memoryUsage(),
-            commandHistory: commandLogs.slice(-10)
+            memoryUsage: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
+            recentCommands: commandLogs.slice(-10).map(log => ({
+                time: log.formattedTime,
+                user: log.data?.user || 'Unknown',
+                command: log.data?.command || log.message
+            }))
         };
     }
 }
 
 function applyCustomFont(text) {
     const fontMap = {
-        'A': 'ᴀ', 'B': 'ʙ', 'C': 'ᴄ', 'D': 'ᴅ', 'E': 'ᴇ', 'F': 'ꜰ', 'G': 'ɢ', 'H': 'ʜ', 'I': 'ɪ', 'J': 'ᴊ', 'K': 'ᴋ', 'L': 'ʟ', 'M': 'ᴍ',
-        'N': 'ɴ', 'O': 'ᴏ', 'P': 'ᴘ', 'Q': 'ǫ', 'R': 'ʀ', 'S': 'ꜱ', 'T': 'ᴛ', 'U': 'ᴜ', 'V': 'ᴠ', 'W': 'ᴡ', 'X': 'x', 'Y': 'ʏ', 'Z': 'ᴢ',
-        'a': 'ᴀ', 'b': 'ʙ', 'c': 'ᴄ', 'd': 'ᴅ', 'e': 'ᴇ', 'f': 'ꜰ', 'g': 'ɢ', 'h': 'ʜ', 'i': 'ɪ', 'j': 'ᴊ', 'k': 'ᴋ', 'l': 'ʟ', 'm': 'ᴍ',
-        'n': 'ɴ', 'o': 'ᴏ', 'p': 'ᴘ', 'q': 'ǫ', 'r': 'ʀ', 's': 'ꜱ', 't': 'ᴛ', 'u': 'ᴜ', 'v': 'ᴠ', 'w': 'ᴡ', 'x': 'x', 'y': 'ʏ', 'z': 'ᴢ',
+        'A': 'ᴀ', 'B': 'ʙ', 'C': 'ᴄ', 'D': 'ᴅ', 'E': 'ᴇ', 'F': 'ꜰ', 'G': 'ɢ', 'H': 'ʜ', 'I': 'ɪ', 'J': 'ᴊ',
+        'K': 'ᴋ', 'L': 'ʟ', 'M': 'ᴍ', 'N': 'ɴ', 'O': 'ᴏ', 'P': 'ᴘ', 'Q': 'ǫ', 'R': 'ʀ', 'S': 'ꜱ', 'T': 'ᴛ',
+        'U': 'ᴜ', 'V': 'ᴠ', 'W': 'ᴡ', 'X': 'x', 'Y': 'ʏ', 'Z': 'ᴢ',
+        'a': 'ᴀ', 'b': 'ʙ', 'c': 'ᴄ', 'd': 'ᴅ', 'e': 'ᴇ', 'f': 'ꜰ', 'g': 'ɢ', 'h': 'ʜ', 'i': 'ɪ', 'j': 'ᴊ',
+        'k': 'ᴋ', 'l': 'ʟ', 'm': 'ᴍ', 'n': 'ɴ', 'o': 'ᴏ', 'p': 'ᴘ', 'q': 'ǫ', 'r': 'ʀ', 's': 'ꜱ', 't': 'ᴛ',
+        'u': 'ᴜ', 'v': 'ᴠ', 'w': 'ᴡ', 'x': 'x', 'y': 'ʏ', 'z': 'ᴢ',
         '0': '𝟢', '1': '𝟣', '2': '𝟤', '3': '𝟥', '4': '𝟦', '5': '𝟧', '6': '𝟨', '7': '𝟩', '8': '𝟪', '9': '𝟫'
     };
     
@@ -313,21 +530,21 @@ const CHANNEL_STRUCTURE = [
 ];
 
 client.once('ready', async () => {
-    Logger.log('SYSTEM', '══════════════════════════════════════════════════════════');
-    Logger.log('SYSTEM', '🚀 DISCORD BOT INITIALIZATION STARTED');
-    Logger.log('SYSTEM', '══════════════════════════════════════════════════════════');
-    Logger.log('INFO', `Bot User: ${client.user.tag} (ID: ${client.user.id})`);
-    Logger.log('INFO', `Client ID: ${CLIENT_ID}`);
-    Logger.log('INFO', `Target Guild ID: ${GUILD_ID}`);
-    Logger.log('INFO', `Prefix: ${prefix}`);
-    Logger.log('INFO', `Node.js Version: ${process.version}`);
-    Logger.log('INFO', `Platform: ${process.platform} ${process.arch}`);
-    Logger.log('INFO', `Memory Usage: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+    HUGE_LOGGER.log('ULTIMATE', '══════════════════════════════════════════════════════════');
+    HUGE_LOGGER.log('GOD_MODE', '🚀 DISCORD BOT INITIALIZATION STARTED - GOD MODE ACTIVATED');
+    HUGE_LOGGER.log('EPIC', '══════════════════════════════════════════════════════════');
+    HUGE_LOGGER.log('INFO', `Bot User: ${client.user.tag} (ID: ${client.user.id})`);
+    HUGE_LOGGER.log('INFO', `Client ID: ${CLIENT_ID}`);
+    HUGE_LOGGER.log('INFO', `Target Guild ID: ${GUILD_ID}`);
+    HUGE_LOGGER.log('INFO', `Prefix: ${prefix}`);
+    HUGE_LOGGER.log('INFO', `Node.js Version: ${process.version}`);
+    HUGE_LOGGER.log('INFO', `Platform: ${process.platform} ${process.arch}`);
+    HUGE_LOGGER.log('MEMORY', `Memory Usage: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
     
     const guilds = client.guilds.cache;
-    Logger.log('NETWORK', `Connected to ${guilds.size} server(s):`);
+    HUGE_LOGGER.log('NETWORK', `Connected to ${guilds.size} server(s):`);
     guilds.forEach(guild => {
-        Logger.log('NETWORK', `  • ${guild.name} (${guild.id}) - ${guild.memberCount} members`);
+        HUGE_LOGGER.log('NETWORK', `  • ${guild.name} (${guild.id}) - ${guild.memberCount} members`);
     });
     
     const activities = [
@@ -347,8 +564,8 @@ client.once('ready', async () => {
     client.user.setStatus('online');
     
     setInterval(() => {
-        const stats = Logger.getStats();
-        Logger.log('MEMORY', `Uptime: ${stats.uptime} | Commands: ${stats.totalCommands} | Memory: ${Math.round(stats.memoryUsage.heapUsed / 1024 / 1024)}MB`);
+        const stats = HUGE_LOGGER.getStats();
+        HUGE_LOGGER.log('MEMORY', `Uptime: ${stats.uptime} | Commands: ${stats.totalCommands} | Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
     }, 60000);
     
     try {
@@ -373,22 +590,34 @@ client.once('ready', async () => {
             {
                 name: 'stats',
                 description: '📈 Show bot statistics and uptime'
+            },
+            {
+                name: 'serverinfo',
+                description: '🏰 Show server information'
+            },
+            {
+                name: 'userinfo',
+                description: '👤 Show user information'
+            },
+            {
+                name: 'clean',
+                description: '🧹 Clean messages in channel'
             }
         ];
         
         await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
-        Logger.log('SUCCESS', `Registered ${commands.length} slash commands successfully`);
+        HUGE_LOGGER.log('SUCCESS', `Registered ${commands.length} slash commands successfully`);
     } catch (err) {
-        Logger.log('ERROR', `Failed to register slash commands: ${err.message}`);
+        HUGE_LOGGER.log('ERROR', `Failed to register slash commands: ${err.message}`);
     }
     
-    Logger.log('SUCCESS', '══════════════════════════════════════════════════════════');
-    Logger.log('SUCCESS', '✅ BOT IS NOW FULLY OPERATIONAL AND READY FOR COMMANDS');
-    Logger.log('SUCCESS', '══════════════════════════════════════════════════════════');
+    HUGE_LOGGER.log('SUCCESS', '══════════════════════════════════════════════════════════');
+    HUGE_LOGGER.log('MYTHIC', '✅ BOT IS NOW FULLY OPERATIONAL AND READY FOR COMMANDS');
+    HUGE_LOGGER.log('DIVINE', '══════════════════════════════════════════════════════════');
 });
 
 client.on('guildMemberAdd', async member => {
-    Logger.log('INFO', `Member joined: ${member.user.tag} (${member.id})`);
+    HUGE_LOGGER.log('INFO', `Member joined: ${member.user.tag} (${member.id})`);
     
     try {
         const verificationNeeded = member.guild.roles.cache.find(role => role.name === applyCustomFont("Verification Needed"));
@@ -402,28 +631,10 @@ client.on('guildMemberAdd', async member => {
         
         if (rolesToAssign.length > 0) {
             await member.roles.add(rolesToAssign);
-            Logger.log('SUCCESS', `Auto-assigned ${rolesToAssign.length} verification roles to ${member.user.tag}`);
-            
-            try {
-                const welcomeDM = new EmbedBuilder()
-                    .setTitle('👋 Welcome to the Server!')
-                    .setDescription(`Hello ${member.user.username}! Welcome to our community.`)
-                    .setColor(0x00FF00)
-                    .addFields(
-                        { name: '📋 Next Steps', value: '1. Check #rules\n2. Complete verification\n3. Agree to guidelines\n4. Get started!' },
-                        { name: '🎯 Auto-Assigned Roles', value: '• Verification Needed\n• Agreement Needed\n• Evaluation Needed\n\nComplete these requirements to gain full access.' }
-                    )
-                    .setFooter({ text: 'Use .help for command list' })
-                    .setTimestamp();
-                
-                await member.send({ embeds: [welcomeDM] });
-                Logger.log('INFO', `Sent welcome DM to ${member.user.tag}`);
-            } catch (dmError) {
-                Logger.log('WARNING', `Could not send welcome DM to ${member.user.tag}: ${dmError.message}`);
-            }
+            HUGE_LOGGER.log('SUCCESS', `Auto-assigned ${rolesToAssign.length} verification roles to ${member.user.tag}`);
         }
-    } catch (roleError) {
-        Logger.log('ERROR', `Error auto-assigning roles to ${member.user.tag}: ${roleError.message}`);
+    } catch (error) {
+        HUGE_LOGGER.log('ERROR', `Error auto-assigning roles to ${member.user.tag}: ${error.message}`);
     }
     
     if (welcomeChannel) {
@@ -443,16 +654,15 @@ client.on('guildMemberAdd', async member => {
                     .setTimestamp();
 
                 await channel.send({ content: `${member}`, embeds: [embed] });
-                Logger.log('INFO', `Sent welcome message for ${member.user.tag} in ${channel.name}`);
             }
         } catch (error) {
-            Logger.log('ERROR', `Error in welcome event: ${error.message}`);
+            HUGE_LOGGER.log('ERROR', `Error in welcome event: ${error.message}`);
         }
     }
 });
 
 client.on('guildMemberRemove', async member => {
-    Logger.log('INFO', `Member left: ${member.user.tag} (${member.id})`);
+    HUGE_LOGGER.log('INFO', `Member left: ${member.user.tag} (${member.id})`);
     
     if (leaveChannel) {
         try {
@@ -472,7 +682,7 @@ client.on('guildMemberRemove', async member => {
                 await channel.send({ embeds: [embed] });
             }
         } catch (error) {
-            Logger.log('ERROR', `Error in leave event: ${error.message}`);
+            HUGE_LOGGER.log('ERROR', `Error in leave event: ${error.message}`);
         }
     }
 });
@@ -480,21 +690,31 @@ client.on('guildMemberRemove', async member => {
 client.on('messageCreate', async message => {
     if (message.author.bot || !message.content.startsWith(prefix)) return;
     
+    // Rate limiting
+    const userId = message.author.id;
+    const now = Date.now();
+    const userLimits = rateLimit.get(userId) || [];
+    const recentLimits = userLimits.filter(time => now - time < 3000);
+    
+    if (recentLimits.length >= 5) {
+        HUGE_LOGGER.log('SECURITY', `Rate limit exceeded for user ${message.author.tag}`);
+        return;
+    }
+    
+    recentLimits.push(now);
+    rateLimit.set(userId, recentLimits);
+    
     const args = message.content.slice(prefix.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
     const guild = message.guild;
     
-    Logger.log('COMMAND', `${message.author.tag} used: ${command} ${args.join(' ')}`, {
-        userId: message.author.id,
-        guildId: guild?.id,
-        channelId: message.channel.id,
-        timestamp: new Date().toISOString()
-    });
+    // Log command with GOD MODE
+    HUGE_LOGGER.logGOD_COMMAND(message, command, args, 'EXECUTING');
     
     if (command === 'role') {
         try {
             if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-                Logger.log('WARNING', `${message.author.tag} attempted .role without permissions`);
+                HUGE_LOGGER.log('WARNING', `${message.author.tag} attempted .role without permissions`);
                 return message.reply('❌ You need Manage Roles permission!');
             }
             
@@ -523,7 +743,7 @@ client.on('messageCreate', async message => {
             
             if (member.roles.cache.has(role.id)) {
                 await member.roles.remove(role);
-                Logger.log('SUCCESS', `Removed role ${role.name} from ${member.user.tag}`);
+                HUGE_LOGGER.log('SUCCESS', `Removed role ${role.name} from ${member.user.tag}`);
                 
                 const embed = new EmbedBuilder()
                     .setTitle('🔄 Role Removed')
@@ -538,7 +758,7 @@ client.on('messageCreate', async message => {
                 await message.channel.send({ embeds: [embed] });
             } else {
                 await member.roles.add(role);
-                Logger.log('SUCCESS', `Added role ${role.name} to ${member.user.tag}`);
+                HUGE_LOGGER.log('SUCCESS', `Added role ${role.name} to ${member.user.tag}`);
                 
                 const embed = new EmbedBuilder()
                     .setTitle('✅ Role Assigned')
@@ -553,7 +773,7 @@ client.on('messageCreate', async message => {
                 await message.channel.send({ embeds: [embed] });
             }
         } catch (error) {
-            Logger.log('ERROR', `Error in .role command: ${error.message}`);
+            HUGE_LOGGER.log('ERROR', `Error in .role command: ${error.message}`);
             message.reply(`❌ Error: ${error.message}`);
         }
     }
@@ -569,13 +789,13 @@ client.on('messageCreate', async message => {
             .addFields(
                 { name: '📡 Bot Latency', value: `${latency}ms`, inline: true },
                 { name: '🌐 API Latency', value: `${apiLatency}ms`, inline: true },
-                { name: '🖥️ Uptime', value: Logger.getStats().uptime, inline: true }
+                { name: '🖥️ Uptime', value: HUGE_LOGGER.getStats().uptime, inline: true }
             )
             .setFooter({ text: `Shard: ${client.shard?.ids || 0} | Guild: ${guild?.name || 'DM'}` })
             .setTimestamp();
         
         await sent.edit({ content: null, embeds: [embed] });
-        Logger.log('DEBUG', `Ping command executed - Bot: ${latency}ms, API: ${apiLatency}ms`);
+        HUGE_LOGGER.log('DEBUG', `Ping command executed - Bot: ${latency}ms, API: ${apiLatency}ms`);
     }
     
     else if (command === 'embed') {
@@ -591,7 +811,7 @@ client.on('messageCreate', async message => {
             .setTimestamp();
         
         await message.channel.send({ embeds: [embed] });
-        Logger.log('INFO', `${message.author.tag} created embed: ${text.substring(0, 50)}...`);
+        HUGE_LOGGER.log('INFO', `${message.author.tag} created embed: ${text.substring(0, 50)}...`);
     }
     
     else if (command === 'membercount') {
@@ -621,7 +841,7 @@ client.on('messageCreate', async message => {
             .setTimestamp();
         
         await message.channel.send({ embeds: [embed] });
-        Logger.log('INFO', `Membercount command executed - Total: ${total}, Online: ${online}`);
+        HUGE_LOGGER.log('INFO', `Membercount command executed - Total: ${total}, Online: ${online}`);
     }
     
     else if (command === 'help') {
@@ -676,12 +896,12 @@ client.on('messageCreate', async message => {
             .setTimestamp();
         
         await message.channel.send({ embeds: [embed] });
-        Logger.log('INFO', `Help command executed by ${message.author.tag}`);
+        HUGE_LOGGER.log('INFO', `Help command executed by ${message.author.tag}`);
     }
     
     else if (command === 'stats') {
-        const stats = Logger.getStats();
-        const memory = stats.memoryUsage;
+        const stats = HUGE_LOGGER.getStats();
+        const memory = process.memoryUsage();
         
         const embed = new EmbedBuilder()
             .setTitle('📈 Bot Statistics')
@@ -732,7 +952,7 @@ client.on('messageCreate', async message => {
         
         const pingRoles = roles.first(5).map(r => r.toString()).join(' ');
         await message.channel.send({ content: pingRoles || '', embeds: [embed] });
-        Logger.log('INFO', `Rolelistembed executed - ${roles.size} roles listed`);
+        HUGE_LOGGER.log('INFO', `Rolelistembed executed - ${roles.size} roles listed`);
     }
     
     else if (command === 'roleinfoembed') {
@@ -773,7 +993,7 @@ client.on('messageCreate', async message => {
             .setDescription(`Welcome messages enabled in ${message.channel}`)
             .setColor(0x00FF00);
         await message.channel.send({ embeds: [embed] });
-        Logger.log('SYSTEM', `Welcome channel set to: ${message.channel.name} (${message.channel.id})`);
+        HUGE_LOGGER.log('SYSTEM', `Welcome channel set to: ${message.channel.name} (${message.channel.id})`);
     }
     
     else if (command === 'enableleavechat') {
@@ -786,7 +1006,7 @@ client.on('messageCreate', async message => {
             .setDescription(`Leave messages enabled in ${message.channel}`)
             .setColor(0x00FF00);
         await message.channel.send({ embeds: [embed] });
-        Logger.log('SYSTEM', `Leave channel set to: ${message.channel.name} (${message.channel.id})`);
+        HUGE_LOGGER.log('SYSTEM', `Leave channel set to: ${message.channel.name} (${message.channel.id})`);
     }
     
     else if (command === 'disablewelcomechat') {
@@ -839,7 +1059,7 @@ client.on('messageCreate', async message => {
             }
         }
         await message.reply(`✅ Deleted ${deleted} ranking roles`);
-        Logger.log('SYSTEM', `Deleted ${deleted} ranking roles`);
+        HUGE_LOGGER.log('SYSTEM', `Deleted ${deleted} ranking roles`);
     }
     
     else if (command === 'setuprankings') {
@@ -886,7 +1106,7 @@ client.on('messageCreate', async message => {
         }
         
         await message.channel.send(`✅ Created ${created} ranking roles with gradient colors!\n✅ Also created 3 auto-assign verification roles.`);
-        Logger.log('SYSTEM', `Created ${created} ranking roles and 3 verification roles`);
+        HUGE_LOGGER.log('SYSTEM', `Created ${created} ranking roles and 3 verification roles`);
     }
     
     else if (command === 'rolemake') {
@@ -914,7 +1134,7 @@ client.on('messageCreate', async message => {
         }
         
         await message.channel.send(`✅ Created ${created} roles with custom font and colors!`);
-        Logger.log('SYSTEM', `Created ${created} roles`);
+        HUGE_LOGGER.log('SYSTEM', `Created ${created} roles`);
     }
     
     else if (command === 'deleteroles') {
@@ -931,7 +1151,7 @@ client.on('messageCreate', async message => {
             }
         }
         await message.reply(`✅ Deleted ${deleted} roles`);
-        Logger.log('SYSTEM', `Deleted ${deleted} roles`);
+        HUGE_LOGGER.log('SYSTEM', `Deleted ${deleted} roles`);
     }
     
     else if (command === 'kick') {
@@ -952,10 +1172,10 @@ client.on('messageCreate', async message => {
                     { name: 'Moderator', value: message.author.toString() }
                 );
             await message.channel.send({ embeds: [embed] });
-            Logger.log('MODERATION', `Kicked ${member.user.tag} for: ${reason}`);
+            HUGE_LOGGER.log('MOD_COMMAND', `Kicked ${member.user.tag} for: ${reason}`);
         } catch (err) {
             message.reply(`❌ Failed: ${err.message}`);
-            Logger.log('ERROR', `Kick failed for ${member?.user?.tag}: ${err.message}`);
+            HUGE_LOGGER.log('ERROR', `Kick failed for ${member?.user?.tag}: ${err.message}`);
         }
     }
     
@@ -977,10 +1197,10 @@ client.on('messageCreate', async message => {
                     { name: 'Moderator', value: message.author.toString() }
                 );
             await message.channel.send({ embeds: [embed] });
-            Logger.log('MODERATION', `Banned ${member.user.tag} for: ${reason}`);
+            HUGE_LOGGER.log('MOD_COMMAND', `Banned ${member.user.tag} for: ${reason}`);
         } catch (err) {
             message.reply(`❌ Failed: ${err.message}`);
-            Logger.log('ERROR', `Ban failed for ${member?.user?.tag}: ${err.message}`);
+            HUGE_LOGGER.log('ERROR', `Ban failed for ${member?.user?.tag}: ${err.message}`);
         }
     }
     
@@ -1024,7 +1244,7 @@ client.on('messageCreate', async message => {
                     { name: 'Moderator', value: message.author.toString() }
                 );
             await message.channel.send({ embeds: [embed] });
-            Logger.log('MODERATION', `Muted ${member.user.tag} for: ${reason}`);
+            HUGE_LOGGER.log('MOD_COMMAND', `Muted ${member.user.tag} for: ${reason}`);
         } catch (err) {
             message.reply(`❌ Failed: ${err.message}`);
         }
@@ -1067,7 +1287,7 @@ client.on('messageCreate', async message => {
         }
         
         await message.channel.send(`✅ Created ${created} channels with custom font!`);
-        Logger.log('SYSTEM', `Created ${created} channels`);
+        HUGE_LOGGER.log('SYSTEM', `Created ${created} channels`);
     }
     
     else if (command === 'channelsdelete') {
@@ -1084,7 +1304,7 @@ client.on('messageCreate', async message => {
             }
         }
         await message.reply(`✅ Deleted ${deleted} channels`);
-        Logger.log('SYSTEM', `Deleted ${deleted} channels`);
+        HUGE_LOGGER.log('SYSTEM', `Deleted ${deleted} channels`);
     }
     
     else if (command === 'verify') {
@@ -1215,6 +1435,123 @@ client.on('messageCreate', async message => {
         
         await message.reply(`✅ ${member}'s access removed`);
     }
+    
+    else if (command === 'serverinfo') {
+        try {
+            const guild = message.guild;
+            const owner = await guild.fetchOwner();
+            const channels = guild.channels.cache;
+            const roles = guild.roles.cache;
+            const emojis = guild.emojis.cache;
+            const boosts = guild.premiumSubscriptionCount || 0;
+            const boostTier = guild.premiumTier;
+            
+            const embed = new EmbedBuilder()
+                .setTitle(`🏰 ${guild.name} Server Information`)
+                .setColor(0x5865F2)
+                .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }))
+                .addFields(
+                    { name: '👑 Owner', value: `${owner.user.tag}`, inline: true },
+                    { name: '🆔 Server ID', value: guild.id, inline: true },
+                    { name: '📅 Created', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true },
+                    { name: '👥 Members', value: `${guild.memberCount}`, inline: true },
+                    { name: '📊 Humans/Bots', value: `${guild.members.cache.filter(m => !m.user.bot).size}/${guild.members.cache.filter(m => m.user.bot).size}`, inline: true },
+                    { name: '🚀 Boosts', value: `${boosts} (Tier ${boostTier})`, inline: true },
+                    { name: '📁 Channels', value: `${channels.filter(c => c.type === ChannelType.GuildText).size} Text | ${channels.filter(c => c.type === ChannelType.GuildVoice).size} Voice`, inline: true },
+                    { name: '🎭 Roles', value: `${roles.size}`, inline: true },
+                    { name: '😄 Emojis', value: `${emojis.size}`, inline: true },
+                    { name: '🌐 Region', value: guild.preferredLocale || 'Unknown', inline: true },
+                    { name: '🛡️ Verification', value: guild.verificationLevel.toString(), inline: true },
+                    { name: '📈 Features', value: guild.features.join(', ') || 'None', inline: true }
+                )
+                .setFooter({ text: `Server ID: ${guild.id}` })
+                .setTimestamp();
+            
+            await message.channel.send({ embeds: [embed] });
+            HUGE_LOGGER.log('INFO', `Serverinfo command executed for ${guild.name}`);
+        } catch (error) {
+            HUGE_LOGGER.log('ERROR', `Serverinfo command failed: ${error.message}`);
+            message.reply('❌ Failed to fetch server information.');
+        }
+    }
+    
+    else if (command === 'userinfo') {
+        try {
+            const target = message.mentions.members.first() || message.member;
+            const user = target.user;
+            const member = target;
+            
+            const accountAge = Math.floor((Date.now() - user.createdTimestamp) / (1000 * 60 * 60 * 24));
+            const joinAge = member.joinedAt ? Math.floor((Date.now() - member.joinedAt.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+            
+            const roles = member.roles.cache.filter(role => role.name !== '@everyone').map(role => role.toString());
+            
+            const embed = new EmbedBuilder()
+                .setTitle(`👤 User Information: ${user.tag}`)
+                .setColor(member.displayColor || 0x5865F2)
+                .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
+                .addFields(
+                    { name: '🆔 User ID', value: user.id, inline: true },
+                    { name: '📛 Nickname', value: member.nickname || 'None', inline: true },
+                    { name: '🤖 Bot', value: user.bot ? 'Yes' : 'No', inline: true },
+                    { name: '📅 Account Created', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>\n(${accountAge} days ago)`, inline: false },
+                    { name: '📥 Joined Server', value: member.joinedAt ? `<t:${Math.floor(member.joinedAt.getTime() / 1000)}:R>\n(${joinAge} days ago)` : 'Unknown', inline: false },
+                    { name: '👑 Highest Role', value: member.roles.highest.toString(), inline: true },
+                    { name: '🎭 Role Count', value: `${roles.length}`, inline: true },
+                    { name: '🚀 Boosting', value: member.premiumSince ? `Since <t:${Math.floor(member.premiumSince.getTime() / 1000)}:R>` : 'Not boosting', inline: false }
+                )
+                .setFooter({ text: `Requested by ${message.author.tag}` })
+                .setTimestamp();
+            
+            if (roles.length > 0) {
+                embed.addFields({ 
+                    name: `🎭 Roles (${roles.length})`, 
+                    value: roles.slice(0, 10).join(' ') + (roles.length > 10 ? `\n...and ${roles.length - 10} more` : ''),
+                    inline: false 
+                });
+            }
+            
+            await message.channel.send({ embeds: [embed] });
+            HUGE_LOGGER.log('INFO', `Userinfo command executed for ${user.tag}`);
+        } catch (error) {
+            HUGE_LOGGER.log('ERROR', `Userinfo command failed: ${error.message}`);
+            message.reply('❌ Failed to fetch user information.');
+        }
+    }
+    
+    else if (command === 'clean' || command === 'clear' || command === 'purge') {
+        try {
+            if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+                HUGE_LOGGER.log('WARNING', `${message.author.tag} attempted .clean without Manage Messages permission`);
+                return message.reply('❌ You need Manage Messages permission!');
+            }
+            
+            const amount = parseInt(args[0]);
+            if (!amount || amount < 1 || amount > 100) {
+                return message.reply('❌ Please specify a number between 1 and 100!');
+            }
+            
+            await message.delete().catch(() => {});
+            
+            const fetched = await message.channel.messages.fetch({ limit: amount + 1 });
+            const toDelete = fetched.filter(msg => !msg.pinned);
+            
+            if (toDelete.size === 0) {
+                return message.channel.send('❌ No messages to delete.').then(msg => setTimeout(() => msg.delete(), 3000));
+            }
+            
+            const deleted = await message.channel.bulkDelete(toDelete, true);
+            
+            const confirmation = await message.channel.send(`✅ Deleted ${deleted.size} message(s).`);
+            HUGE_LOGGER.log('MOD_COMMAND', `Cleaned ${deleted.size} messages in #${message.channel.name} by ${message.author.tag}`);
+            
+            setTimeout(() => confirmation.delete().catch(() => {}), 3000);
+            
+        } catch (error) {
+            HUGE_LOGGER.log('ERROR', `Clean command failed: ${error.message}`);
+            message.reply('❌ Failed to clean messages. Make sure messages are not older than 14 days.');
+        }
+    }
 });
 
 client.on('interactionCreate', async interaction => {
@@ -1223,7 +1560,7 @@ client.on('interactionCreate', async interaction => {
     const { commandName, options } = interaction;
     const guild = interaction.guild;
     
-    Logger.log('COMMAND', `${interaction.user.tag} used slash: /${commandName}`, {
+    HUGE_LOGGER.log('COMMAND', `${interaction.user.tag} used slash: /${commandName}`, {
         userId: interaction.user.id,
         guildId: guild?.id,
         channelId: interaction.channelId
@@ -1288,7 +1625,7 @@ client.on('interactionCreate', async interaction => {
     }
     
     else if (commandName === 'stats') {
-        const stats = Logger.getStats();
+        const stats = HUGE_LOGGER.getStats();
         
         const embed = new EmbedBuilder()
             .setTitle('📈 Bot Statistics')
@@ -1301,43 +1638,92 @@ client.on('interactionCreate', async interaction => {
         
         await interaction.reply({ embeds: [embed] });
     }
+    
+    else if (commandName === 'serverinfo') {
+        const guild = interaction.guild;
+        const owner = await guild.fetchOwner();
+        
+        const embed = new EmbedBuilder()
+            .setTitle(`🏰 ${guild.name} Server Info`)
+            .setColor(0x5865F2)
+            .addFields(
+                { name: '👑 Owner', value: owner.user.tag, inline: true },
+                { name: '👥 Members', value: `${guild.memberCount}`, inline: true },
+                { name: '📅 Created', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true }
+            );
+        
+        await interaction.reply({ embeds: [embed] });
+    }
+    
+    else if (commandName === 'userinfo') {
+        const user = options.getUser('user') || interaction.user;
+        const member = await guild.members.fetch(user.id);
+        
+        const embed = new EmbedBuilder()
+            .setTitle(`👤 ${user.tag}`)
+            .setColor(0x5865F2)
+            .addFields(
+                { name: '🆔 User ID', value: user.id, inline: true },
+                { name: '📅 Account Created', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: true }
+            );
+        
+        await interaction.reply({ embeds: [embed] });
+    }
+    
+    else if (commandName === 'clean') {
+        if (!interaction.memberPermissions.has(PermissionsBitField.Flags.ManageMessages)) {
+            return interaction.reply({ content: '❌ Need Manage Messages permission!', ephemeral: true });
+        }
+        
+        const amount = options.getInteger('amount') || 10;
+        if (amount < 1 || amount > 100) {
+            return interaction.reply({ content: '❌ Amount must be 1-100!', ephemeral: true });
+        }
+        
+        await interaction.deferReply({ ephemeral: true });
+        
+        const fetched = await interaction.channel.messages.fetch({ limit: amount });
+        const deleted = await interaction.channel.bulkDelete(fetched, true);
+        
+        await interaction.editReply({ content: `✅ Deleted ${deleted.size} message(s).` });
+    }
 });
 
 client.on('error', (error) => {
-    Logger.log('ERROR', `Discord Client Error: ${error.message}`, error);
+    HUGE_LOGGER.log('ERROR', `Discord Client Error: ${error.message}`, error);
 });
 
 client.on('warn', (warning) => {
-    Logger.log('WARNING', `Discord Client Warning: ${warning}`);
+    HUGE_LOGGER.log('WARNING', `Discord Client Warning: ${warning}`);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    Logger.log('ERROR', `Unhandled Promise Rejection: ${reason}`, { promise });
+    HUGE_LOGGER.log('ERROR', `Unhandled Promise Rejection: ${reason}`, { promise });
 });
 
 process.on('uncaughtException', (error) => {
-    Logger.log('ERROR', `Uncaught Exception: ${error.message}`, error);
+    HUGE_LOGGER.log('ERROR', `Uncaught Exception: ${error.message}`, error);
     process.exit(1);
 });
 
-Logger.log('SYSTEM', '══════════════════════════════════════════════════════════');
-Logger.log('SYSTEM', '🚀 STARTING DISCORD BOT - INITIALIZING CONNECTION');
-Logger.log('SYSTEM', '══════════════════════════════════════════════════════════');
-Logger.log('INFO', `Environment: ${process.env.NODE_ENV || 'production'}`);
-Logger.log('INFO', `Starting time: ${new Date().toISOString()}`);
-Logger.log('DEBUG', `Token present: ${!!TOKEN}`);
-Logger.log('DEBUG', `Guild ID: ${GUILD_ID || 'Not set'}`);
-Logger.log('DEBUG', `Client ID: ${CLIENT_ID || 'Not set'}`);
+HUGE_LOGGER.log('ULTIMATE', '══════════════════════════════════════════════════════════');
+HUGE_LOGGER.log('GOD_MODE', '🚀 STARTING DISCORD BOT WITH MEGA HUGE LOGGING SYSTEM');
+HUGE_LOGGER.log('EPIC', '══════════════════════════════════════════════════════════');
+HUGE_LOGGER.log('INFO', `Environment: ${process.env.NODE_ENV || 'production'}`);
+HUGE_LOGGER.log('INFO', `Starting time: ${new Date().toISOString()}`);
+HUGE_LOGGER.log('DEBUG', `Token present: ${!!TOKEN}`);
+HUGE_LOGGER.log('DEBUG', `Guild ID: ${GUILD_ID || 'Not set'}`);
+HUGE_LOGGER.log('DEBUG', `Client ID: ${CLIENT_ID || 'Not set'}`);
 
 client.login(TOKEN).catch(err => {
-    Logger.log('ERROR', '══════════════════════════════════════════════════════════');
-    Logger.log('ERROR', '❌ BOT LOGIN FAILED!');
-    Logger.log('ERROR', '══════════════════════════════════════════════════════════');
-    Logger.log('ERROR', `Login Error: ${err.message}`);
-    Logger.log('ERROR', `Error Stack: ${err.stack}`);
-    Logger.log('ERROR', `Token Length: ${TOKEN ? TOKEN.length : 0}`);
-    Logger.log('ERROR', `Token Preview: ${TOKEN ? TOKEN.substring(0, 10) + '...' : 'NO TOKEN'}`);
-    Logger.log('ERROR', '══════════════════════════════════════════════════════════');
+    HUGE_LOGGER.log('ERROR', '══════════════════════════════════════════════════════════');
+    HUGE_LOGGER.log('ERROR', '❌ BOT LOGIN FAILED!');
+    HUGE_LOGGER.log('ERROR', '══════════════════════════════════════════════════════════');
+    HUGE_LOGGER.log('ERROR', `Login Error: ${err.message}`);
+    HUGE_LOGGER.log('ERROR', `Error Stack: ${err.stack}`);
+    HUGE_LOGGER.log('ERROR', `Token Length: ${TOKEN ? TOKEN.length : 0}`);
+    HUGE_LOGGER.log('ERROR', `Token Preview: ${TOKEN ? TOKEN.substring(0, 10) + '...' : 'NO TOKEN'}`);
+    HUGE_LOGGER.log('ERROR', '══════════════════════════════════════════════════════════');
     
     setTimeout(() => {
         process.exit(1);
