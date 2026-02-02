@@ -1,0 +1,916 @@
+const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ChannelType, REST, Routes, ActivityType } = require('discord.js');
+
+// GET TOKEN FROM RENDER ENVIRONMENT
+const TOKEN = process.env.DISCORD_TOKEN;
+const GUILD_ID = process.env.GUILD_ID;
+const CLIENT_ID = process.env.CLIENT_ID;
+
+// BOT SETUP
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildPresences,
+        GatewayIntentBits.GuildMessageTyping,
+        GatewayIntentBits.GuildInvites,
+        GatewayIntentBits.GuildModeration,
+        GatewayIntentBits.GuildWebhooks,
+        GatewayIntentBits.GuildIntegrations,
+        GatewayIntentBits.GuildEmojisAndStickers
+    ]
+});
+
+// GLOBAL STORAGE
+let welcomeChannel = null;
+let leaveChannel = null;
+const prefix = '.';
+let commandLogs = [];
+const startTime = new Date();
+
+// EXTREME LOGGING SYSTEM
+class ExtremeLogger {
+    static log(type, message, data = null) {
+        const timestamp = new Date();
+        const logEntry = {
+            timestamp: timestamp.toISOString(),
+            type,
+            message,
+            data,
+            formattedTime: timestamp.toLocaleString('en-US', { 
+                timeZone: 'UTC',
+                hour12: true,
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            })
+        };
+        
+        // Store in memory (limit to 5000 entries)
+        commandLogs.push(logEntry);
+        if (commandLogs.length > 5000) commandLogs.shift();
+        
+        // Colors for different log types
+        const colors = {
+            'COMMAND': '\x1b[95m', // Bright Magenta
+            'SUPER_COMMAND': '\x1b[96m', // Bright Cyan
+            'ADMIN_COMMAND': '\x1b[91m', // Bright Red
+            'MOD_COMMAND': '\x1b[93m', // Bright Yellow
+            'INFO': '\x1b[36m', // Cyan
+            'SUCCESS': '\x1b[32m', // Green
+            'WARNING': '\x1b[33m', // Yellow
+            'ERROR': '\x1b[31m', // Red
+            'SYSTEM': '\x1b[34m', // Blue
+            'DEBUG': '\x1b[90m', // Gray
+            'MEMORY': '\x1b[93m', // Bright Yellow
+            'NETWORK': '\x1b[95m', // Bright Magenta
+            'VERBOSE': '\x1b[37m' // White
+        };
+        
+        const color = colors[type] || '\x1b[0m';
+        const reset = '\x1b[0m';
+        
+        console.log(`${color}${logEntry.formattedTime} [${type}] ${message}${reset}`);
+        
+        // For DEBUG/VERBOSE, also log data
+        if (data && (type === 'DEBUG' || type === 'VERBOSE' || type === 'ERROR')) {
+            console.log(`${color}DATA: ${JSON.stringify(data, null, 2)}${reset}`);
+        }
+        
+        return logEntry;
+    }
+    
+    static logSuperDetailedCommand(message, command, args, result = null) {
+        const timestamp = new Date();
+        const guild = message.guild;
+        const channel = message.channel;
+        const member = message.member;
+        
+        // Get user roles and permissions
+        const userRoles = member?.roles?.cache?.map(r => r.name).join(', ') || 'None';
+        const userPermissions = member?.permissions?.toArray().join(', ') || 'None';
+        
+        // Create detailed log object
+        const logData = {
+            // ============ COMMAND EXECUTION DETAILS ============
+            COMMAND: {
+                raw: message.content,
+                parsed: command,
+                args: args,
+                prefix: prefix
+            },
+            
+            // ============ USER INFORMATION ============
+            USER: {
+                id: message.author.id,
+                tag: message.author.tag,
+                username: message.author.username,
+                discriminator: message.author.discriminator,
+                bot: message.author.bot,
+                created: message.author.createdAt.toISOString(),
+                avatar: message.author.displayAvatarURL()
+            },
+            
+            // ============ MEMBER INFORMATION ============
+            MEMBER: {
+                joined: member?.joinedAt?.toISOString() || 'Unknown',
+                nickname: member?.nickname || 'None',
+                roles: userRoles,
+                roleCount: member?.roles?.cache?.size || 0,
+                permissions: userPermissions,
+                pending: member?.pending || false,
+                premiumSince: member?.premiumSince?.toISOString() || 'None'
+            },
+            
+            // ============ CHANNEL INFORMATION ============
+            CHANNEL: {
+                id: channel.id,
+                name: channel.name,
+                type: channel.type,
+                nsfw: channel.nsfw || false,
+                topic: channel.topic || 'None',
+                created: channel.createdAt.toISOString(),
+                position: channel.position || 0
+            },
+            
+            // ============ SERVER INFORMATION ============
+            SERVER: {
+                id: guild?.id || 'DM',
+                name: guild?.name || 'Direct Message',
+                memberCount: guild?.memberCount || 0,
+                ownerId: guild?.ownerId || 'Unknown',
+                created: guild?.createdAt.toISOString() || 'Unknown',
+                region: guild?.preferredLocale || 'Unknown',
+                verification: guild?.verificationLevel || 'Unknown',
+                boosts: guild?.premiumSubscriptionCount || 0,
+                boostTier: guild?.premiumTier || 'None'
+            },
+            
+            // ============ EXECUTION METADATA ============
+            META: {
+                timestamp: timestamp.toISOString(),
+                formattedTime: timestamp.toLocaleString('en-US', {
+                    timeZone: 'UTC',
+                    hour12: true,
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    fractionalSecondDigits: 3
+                }),
+                messageId: message.id,
+                interaction: message.interaction ? true : false,
+                result: result,
+                process: {
+                    pid: process.pid,
+                    memory: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
+                    uptime: `${Math.floor(process.uptime())}s`
+                }
+            }
+        };
+        
+        // Determine command type for color coding
+        let commandType = 'COMMAND';
+        const adminCommands = ['deleteroles', 'deleterankings', 'setuprankings', 'rolemake', 'channelsmake', 'channelsdelete', 'enablewelcomechat', 'enableleavechat', 'disablewelcomechat', 'disableleavechat'];
+        const modCommands = ['kick', 'ban', 'mute', 'verify', 'unverify', 'allowaccess', 'removeaccess'];
+        
+        if (adminCommands.includes(command)) commandType = 'ADMIN_COMMAND';
+        else if (modCommands.includes(command)) commandType = 'MOD_COMMAND';
+        else if (['role', 'help', 'stats', 'membercount'].includes(command)) commandType = 'SUPER_COMMAND';
+        
+        // Log with detailed border
+        console.log(`\x1b[96m══════════════════════════════════════════════════════════\x1b[0m`);
+        console.log(`\x1b[96m╔════════════════════════════════════════════════════════╗\x1b[0m`);
+        console.log(`\x1b[96m║  🚀 SUPER DETAILED COMMAND EXECUTION LOG              ║\x1b[0m`);
+        console.log(`\x1b[96m╠════════════════════════════════════════════════════════╣\x1b[0m`);
+        console.log(`\x1b[96m║  📝 COMMAND: ${command.padEnd(40)} ║\x1b[0m`);
+        console.log(`\x1b[96m║  👤 USER: ${message.author.tag.padEnd(42)} ║\x1b[0m`);
+        console.log(`\x1b[96m║  🆔 USER ID: ${message.author.id.padEnd(39)} ║\x1b[0m`);
+        console.log(`\x1b[96m║  🏢 SERVER: ${(guild?.name || 'DM').padEnd(41)} ║\x1b[0m`);
+        console.log(`\x1b[96m║  📍 CHANNEL: ${channel.name.padEnd(40)} ║\x1b[0m`);
+        console.log(`\x1b[96m║  📊 ROLES: ${member?.roles?.cache?.size || 0} roles`.padEnd(52) + `║\x1b[0m`);
+        console.log(`\x1b[96m║  ⏰ TIME: ${timestamp.toLocaleTimeString().padEnd(42)} ║\x1b[0m`);
+        console.log(`\x1b[96m║  📅 DATE: ${timestamp.toLocaleDateString().padEnd(42)} ║\x1b[0m`);
+        console.log(`\x1b[96m║  💾 MEMORY: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`.padEnd(50) + `║\x1b[0m`);
+        console.log(`\x1b[96m╚════════════════════════════════════════════════════════╝\x1b[0m`);
+        console.log(`\x1b[96m══════════════════════════════════════════════════════════\x1b[0m`);
+        
+        // Log detailed data in compact form
+        console.log(`\x1b[90m┌───────────────── USER DETAILS ─────────────────┐\x1b[0m`);
+        console.log(`\x1b[90m│ Tag: ${message.author.tag.padEnd(45)} │\x1b[0m`);
+        console.log(`\x1b[90m│ ID: ${message.author.id.padEnd(47)} │\x1b[0m`);
+        console.log(`\x1b[90m│ Created: ${message.author.createdAt.toLocaleDateString().padEnd(40)} │\x1b[0m`);
+        console.log(`\x1b[90m│ Bot: ${message.author.bot.toString().padEnd(46)} │\x1b[0m`);
+        console.log(`\x1b[90m└────────────────────────────────────────────────┘\x1b[0m`);
+        
+        console.log(`\x1b[90m┌──────────────── MEMBER DETAILS ────────────────┐\x1b[0m`);
+        console.log(`\x1b[90m│ Joined: ${member?.joinedAt?.toLocaleDateString()?.padEnd(41) || 'Unknown'.padEnd(41)} │\x1b[0m`);
+        console.log(`\x1b[90m│ Nickname: ${(member?.nickname || 'None').padEnd(40)} │\x1b[0m`);
+        console.log(`\x1b[90m│ Role Count: ${(member?.roles?.cache?.size || 0).toString().padEnd(38)} │\x1b[0m`);
+        console.log(`\x1b[90m└────────────────────────────────────────────────┘\x1b[0m`);
+        
+        console.log(`\x1b[90m┌─────────────── CHANNEL DETAILS ────────────────┐\x1b[0m`);
+        console.log(`\x1b[90m│ Name: ${channel.name.padEnd(45)} │\x1b[0m`);
+        console.log(`\x1b[90m│ ID: ${channel.id.padEnd(47)} │\x1b[0m`);
+        console.log(`\x1b[90m│ Type: ${channel.type.toString().padEnd(44)} │\x1b[0m`);
+        console.log(`\x1b[90m│ Created: ${channel.createdAt.toLocaleDateString().padEnd(40)} │\x1b[0m`);
+        console.log(`\x1b[90m└────────────────────────────────────────────────┘\x1b[0m`);
+        
+        if (guild) {
+            console.log(`\x1b[90m┌─────────────── SERVER DETAILS ────────────────┐\x1b[0m`);
+            console.log(`\x1b[90m│ Name: ${guild.name.padEnd(45)} │\x1b[0m`);
+            console.log(`\x1b[90m│ ID: ${guild.id.padEnd(47)} │\x1b[0m`);
+            console.log(`\x1b[90m│ Members: ${guild.memberCount.toString().padEnd(42)} │\x1b[0m`);
+            console.log(`\x1b[90m│ Owner ID: ${guild.ownerId.padEnd(42)} │\x1b[0m`);
+            console.log(`\x1b[90m│ Created: ${guild.createdAt.toLocaleDateString().padEnd(40)} │\x1b[0m`);
+            console.log(`\x1b[90m└────────────────────────────────────────────────┘\x1b[0m`);
+        }
+        
+        console.log(`\x1b[90m┌────────────── COMMAND DETAILS ───────────────┐\x1b[0m`);
+        console.log(`\x1b[90m│ Full: ${message.content.substring(0, 50).padEnd(44)} │\x1b[0m`);
+        console.log(`\x1b[90m│ Args: ${args.join(' ').substring(0, 50).padEnd(44)} │\x1b[0m`);
+        console.log(`\x1b[90m│ Result: ${(result || 'Success').toString().substring(0, 50).padEnd(42)} │\x1b[0m`);
+        console.log(`\x1b[90m└────────────────────────────────────────────────┘\x1b[0m`);
+        
+        console.log(`\x1b[96m══════════════════════════════════════════════════════════\x1b[0m`);
+        
+        // Store in memory logs
+        commandLogs.push({
+            timestamp: timestamp.toISOString(),
+            type: commandType,
+            message: `Command: ${command}`,
+            data: logData,
+            formattedTime: timestamp.toLocaleString()
+        });
+        
+        if (commandLogs.length > 5000) commandLogs.shift();
+        
+        return logData;
+    }
+    
+    static getStats() {
+        const now = new Date();
+        const uptime = now - startTime;
+        const hours = Math.floor(uptime / 3600000);
+        const minutes = Math.floor((uptime % 3600000) / 60000);
+        const seconds = Math.floor((uptime % 60000) / 1000);
+        
+        const mem = process.memoryUsage();
+        
+        return {
+            uptime: `${hours}h ${minutes}m ${seconds}s`,
+            startTime: startTime.toISOString(),
+            totalCommands: commandLogs.filter(log => log.type.includes('COMMAND')).length,
+            totalErrors: commandLogs.filter(log => log.type === 'ERROR').length,
+            memoryUsage: {
+                heapUsed: `${Math.round(mem.heapUsed / 1024 / 1024)}MB`,
+                heapTotal: `${Math.round(mem.heapTotal / 1024 / 1024)}MB`,
+                rss: `${Math.round(mem.rss / 1024 / 1024)}MB`
+            },
+            recentCommands: commandLogs.slice(-5).map(log => ({
+                time: log.formattedTime,
+                type: log.type,
+                message: log.message
+            }))
+        };
+    }
+    
+    static getCommandHistory(count = 10) {
+        return commandLogs
+            .filter(log => log.type.includes('COMMAND'))
+            .slice(-count)
+            .map(log => ({
+                time: log.formattedTime || new Date(log.timestamp).toLocaleString(),
+                user: log.data?.USER?.tag || 'Unknown',
+                command: log.data?.COMMAND?.parsed || 'Unknown',
+                channel: log.data?.CHANNEL?.name || 'Unknown',
+                server: log.data?.SERVER?.name || 'DM'
+            }));
+    }
+}
+
+// CUSTOM FONT FUNCTION
+function applyCustomFont(text) {
+    const fontMap = {
+        'A': 'ᴀ', 'B': 'ʙ', 'C': 'ᴄ', 'D': 'ᴅ', 'E': 'ᴇ', 'F': 'ꜰ', 'G': 'ɢ', 'H': 'ʜ', 'I': 'ɪ', 'J': 'ᴊ',
+        'K': 'ᴋ', 'L': 'ʟ', 'M': 'ᴍ', 'N': 'ɴ', 'O': 'ᴏ', 'P': 'ᴘ', 'Q': 'ǫ', 'R': 'ʀ', 'S': 'ꜱ', 'T': 'ᴛ',
+        'U': 'ᴜ', 'V': 'ᴠ', 'W': 'ᴡ', 'X': 'x', 'Y': 'ʏ', 'Z': 'ᴢ',
+        'a': 'ᴀ', 'b': 'ʙ', 'c': 'ᴄ', 'd': 'ᴅ', 'e': 'ᴇ', 'f': 'ꜰ', 'g': 'ɢ', 'h': 'ʜ', 'i': 'ɪ', 'j': 'ᴊ',
+        'k': 'ᴋ', 'l': 'ʟ', 'm': 'ᴍ', 'n': 'ɴ', 'o': 'ᴏ', 'p': 'ᴘ', 'q': 'ǫ', 'r': 'ʀ', 's': 'ꜱ', 't': 'ᴛ',
+        'u': 'ᴜ', 'v': 'ᴠ', 'w': 'ᴡ', 'x': 'x', 'y': 'ʏ', 'z': 'ᴢ',
+        '0': '𝟢', '1': '𝟣', '2': '𝟤', '3': '𝟥', '4': '𝟦', '5': '𝟧', '6': '𝟨', '7': '𝟩', '8': '𝟪', '9': '𝟫'
+    };
+    
+    return text.split('').map(char => fontMap[char] || char).join('');
+}
+
+// RANKING ROLES (keep your existing gradient colors)
+const RANKING_ROLES = [
+    { name: applyCustomFont("Observer I"), color: "#FFD700" },
+    { name: applyCustomFont("Observer II"), color: "#FFD700" },
+    { name: applyCustomFont("Observer III"), color: "#FFD700" },
+    { name: applyCustomFont("Initiate I"), color: "#FFC300" },
+    { name: applyCustomFont("Initiate II"), color: "#FFC300" },
+    { name: applyCustomFont("Initiate III"), color: "#FFC300" },
+    { name: applyCustomFont("Novitiate I"), color: "#FFB000" },
+    { name: applyCustomFont("Novitiate II"), color: "#FFB000" },
+    { name: applyCustomFont("Novitiate III"), color: "#FFB000" },
+    { name: applyCustomFont("Apprentice I"), color: "#FF9A00" },
+    { name: applyCustomFont("Apprentice II"), color: "#FF9A00" },
+    { name: applyCustomFont("Apprentice III"), color: "#FF9A00" },
+    { name: applyCustomFont("Intermediate I"), color: "#FF8500" },
+    { name: applyCustomFont("Intermediate II"), color: "#FF8500" },
+    { name: applyCustomFont("Intermediate III"), color: "#FF8500" },
+    { name: applyCustomFont("Practitioner I"), color: "#FF7000" },
+    { name: applyCustomFont("Practitioner II"), color: "#FF7000" },
+    { name: applyCustomFont("Practitioner III"), color: "#FF7000" },
+    { name: applyCustomFont("Proficient I"), color: "#FF5B00" },
+    { name: applyCustomFont("Proficient II"), color: "#FF5B00" },
+    { name: applyCustomFont("Proficient III"), color: "#FF5B00" },
+    { name: applyCustomFont("Advanced I"), color: "#FF4600" },
+    { name: applyCustomFont("Advanced II"), color: "#FF4600" },
+    { name: applyCustomFont("Advanced III"), color: "#FF4600" },
+    { name: applyCustomFont("Experienced I"), color: "#FF3100" },
+    { name: applyCustomFont("Experienced II"), color: "#FF3100" },
+    { name: applyCustomFont("Experienced III"), color: "#FF3100" },
+    { name: applyCustomFont("Advanced Practitioner I"), color: "#FF1C00" },
+    { name: applyCustomFont("Advanced Practitioner II"), color: "#FF1C00" },
+    { name: applyCustomFont("Advanced Practitioner III"), color: "#FF1C00" },
+    { name: applyCustomFont("Ascendant I"), color: "#FF0000" },
+    { name: applyCustomFont("Ascendant II"), color: "#FF0000" },
+    { name: applyCustomFont("Ascendant III"), color: "#FF0000" },
+    { name: applyCustomFont("Transcendent I"), color: "#E60000" },
+    { name: applyCustomFont("Transcendent II"), color: "#E60000" },
+    { name: applyCustomFont("Transcendent III"), color: "#E60000" },
+    { name: applyCustomFont("Luminary I"), color: "#CC0000" },
+    { name: applyCustomFont("Luminary II"), color: "#CC0000" },
+    { name: applyCustomFont("Luminary III"), color: "#CC0000" },
+    { name: applyCustomFont("Ascendant Prime I"), color: "#B30000" },
+    { name: applyCustomFont("Ascendant Prime II"), color: "#B30000" },
+    { name: applyCustomFont("Ascendant Prime III"), color: "#B30000" },
+    { name: applyCustomFont("Transcendent Prime I"), color: "#990000" },
+    { name: applyCustomFont("Transcendent Prime II"), color: "#990000" },
+    { name: applyCustomFont("Transcendent Prime III"), color: "#990000" },
+    { name: applyCustomFont("Luminary Prime I"), color: "#800000" },
+    { name: applyCustomFont("Luminary Prime II"), color: "#800000" },
+    { name: applyCustomFont("Luminary Prime III"), color: "#800000" },
+    { name: applyCustomFont("Luminary Eternal I"), color: "#660000" },
+    { name: applyCustomFont("Luminary Eternal II"), color: "#660000" },
+    { name: applyCustomFont("Luminary Eternal III"), color: "#660000" },
+    { name: applyCustomFont("Ascendant Eternal I"), color: "#4D0000" },
+    { name: applyCustomFont("Ascendant Eternal II"), color: "#4D0000" },
+    { name: applyCustomFont("Ascendant Eternal III"), color: "#4D0000" },
+    { name: applyCustomFont("Transcendent Eternal I"), color: "#330000" },
+    { name: applyCustomFont("Transcendent Eternal II"), color: "#330000" },
+    { name: applyCustomFont("Transcendent Eternal III"), color: "#330000" },
+    { name: applyCustomFont("Omniscient I"), color: "#1A0000" },
+    { name: applyCustomFont("Omniscient II"), color: "#1A0000" },
+    { name: applyCustomFont("Omniscient III"), color: "#1A0000" },
+    { name: applyCustomFont("Nexithal I"), color: "#000000" },
+    { name: applyCustomFont("Nexithal II"), color: "#000000" },
+    { name: applyCustomFont("Nexithal III"), color: "#000000" },
+    { name: applyCustomFont("Zethithal I"), color: "#000000" },
+    { name: applyCustomFont("Zethithal II"), color: "#000000" },
+    { name: applyCustomFont("Zethithal III"), color: "#000000" }
+];
+
+// BOT READY EVENT
+client.once('ready', async () => {
+    ExtremeLogger.log('SYSTEM', '══════════════════════════════════════════════════════════');
+    ExtremeLogger.log('SYSTEM', '🚀 DISCORD BOT BOOT SEQUENCE INITIATED');
+    ExtremeLogger.log('SYSTEM', '══════════════════════════════════════════════════════════');
+    
+    const guilds = client.guilds.cache;
+    ExtremeLogger.log('NETWORK', `Connected to ${guilds.size} server(s):`);
+    guilds.forEach(guild => {
+        ExtremeLogger.log('NETWORK', `  • ${guild.name} (${guild.id}) - ${guild.memberCount} members`);
+    });
+    
+    // RICH PRESENCE
+    const activities = [
+        { name: `${prefix}help | Watching ${guilds.size} servers`, type: ActivityType.Watching },
+        { name: `Managing ${RANKING_ROLES.length} ranking roles`, type: ActivityType.Competing },
+        { name: `Extreme Logging v3.0`, type: ActivityType.Streaming, url: 'https://twitch.tv/discord' },
+        { name: `${prefix}stats for bot info`, type: ActivityType.Playing }
+    ];
+    
+    let currentActivity = 0;
+    setInterval(() => {
+        client.user.setActivity(activities[currentActivity]);
+        currentActivity = (currentActivity + 1) % activities.length;
+    }, 30000);
+    
+    client.user.setActivity(activities[0]);
+    client.user.setStatus('online');
+    
+    // Register slash commands
+    try {
+        const rest = new REST({ version: '10' }).setToken(TOKEN);
+        const commands = [
+            { name: 'ping', description: 'Check bot latency' },
+            { name: 'rolelist', description: 'Show ranking roles' },
+            { name: 'membercount', description: 'Show member statistics' },
+            { name: 'help', description: 'Show help menu' },
+            { name: 'stats', description: 'Show bot statistics' },
+            { name: 'serverinfo', description: 'Show server information' },
+            { name: 'userinfo', description: 'Show user information' },
+            { name: 'clean', description: 'Clean messages in channel' }
+        ];
+        
+        await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
+        ExtremeLogger.log('SUCCESS', `Registered ${commands.length} slash commands`);
+    } catch (err) {
+        ExtremeLogger.log('ERROR', `Failed to register slash commands: ${err.message}`);
+    }
+    
+    ExtremeLogger.log('SUCCESS', '══════════════════════════════════════════════════════════');
+    ExtremeLogger.log('SUCCESS', '✅ BOT IS NOW FULLY OPERATIONAL WITH EXTREME LOGGING');
+    ExtremeLogger.log('SUCCESS', '══════════════════════════════════════════════════════════');
+    
+    // Log memory usage every 30 seconds
+    setInterval(() => {
+        const stats = ExtremeLogger.getStats();
+        ExtremeLogger.log('MEMORY', `Uptime: ${stats.uptime} | Commands: ${stats.totalCommands} | Memory: ${stats.memoryUsage.heapUsed} | Errors: ${stats.totalErrors}`);
+    }, 30000);
+});
+
+// WELCOME EVENT (AUTO-ASSIGN ROLES)
+client.on('guildMemberAdd', async member => {
+    ExtremeLogger.log('INFO', `Member joined: ${member.user.tag} (${member.id})`);
+    
+    // Auto-assign verification roles
+    try {
+        const roles = [
+            applyCustomFont("Verification Needed"),
+            applyCustomFont("Agreement Needed"),
+            applyCustomFont("Evaluation Needed")
+        ];
+        
+        const rolesToAssign = [];
+        for (const roleName of roles) {
+            const role = member.guild.roles.cache.find(r => r.name === roleName);
+            if (role) rolesToAssign.push(role);
+        }
+        
+        if (rolesToAssign.length > 0) {
+            await member.roles.add(rolesToAssign);
+            ExtremeLogger.log('SUCCESS', `Auto-assigned ${rolesToAssign.length} verification roles to ${member.user.tag}`);
+        }
+    } catch (error) {
+        ExtremeLogger.log('ERROR', `Failed to auto-assign roles: ${error.message}`);
+    }
+});
+
+// MESSAGE COMMAND HANDLER WITH EXTREME LOGGING
+client.on('messageCreate', async message => {
+    if (message.author.bot || !message.content.startsWith(prefix)) return;
+    
+    const args = message.content.slice(prefix.length).trim().split(/ +/);
+    const command = args.shift().toLowerCase();
+    const guild = message.guild;
+    
+    // ============================================
+    // NEW COMMAND 1: .serverinfo
+    // ============================================
+    if (command === 'serverinfo') {
+        const logData = ExtremeLogger.logSuperDetailedCommand(message, 'serverinfo', args, 'Fetching server info');
+        
+        try {
+            const guild = message.guild;
+            const owner = await guild.fetchOwner();
+            const channels = guild.channels.cache;
+            const roles = guild.roles.cache;
+            const emojis = guild.emojis.cache;
+            const boosts = guild.premiumSubscriptionCount || 0;
+            const boostTier = guild.premiumTier;
+            
+            const embed = new EmbedBuilder()
+                .setTitle(`🏰 ${guild.name} Server Information`)
+                .setColor(0x5865F2)
+                .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }))
+                .addFields(
+                    { name: '👑 Owner', value: `${owner.user.tag}`, inline: true },
+                    { name: '🆔 Server ID', value: guild.id, inline: true },
+                    { name: '📅 Created', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true },
+                    { name: '👥 Members', value: `${guild.memberCount}`, inline: true },
+                    { name: '📊 Humans/Bots', value: `${guild.members.cache.filter(m => !m.user.bot).size}/${guild.members.cache.filter(m => m.user.bot).size}`, inline: true },
+                    { name: '🚀 Boosts', value: `${boosts} (Tier ${boostTier})`, inline: true },
+                    { name: '📁 Channels', value: `${channels.filter(c => c.type === ChannelType.GuildText).size} Text | ${channels.filter(c => c.type === ChannelType.GuildVoice).size} Voice`, inline: true },
+                    { name: '🎭 Roles', value: `${roles.size}`, inline: true },
+                    { name: '😄 Emojis', value: `${emojis.size}`, inline: true },
+                    { name: '🌐 Region', value: guild.preferredLocale || 'Unknown', inline: true },
+                    { name: '🛡️ Verification', value: guild.verificationLevel.toString(), inline: true },
+                    { name: '📈 Features', value: guild.features.join(', ') || 'None', inline: true }
+                )
+                .setFooter({ text: `Server ID: ${guild.id}` })
+                .setTimestamp();
+            
+            await message.channel.send({ embeds: [embed] });
+            
+        } catch (error) {
+            ExtremeLogger.log('ERROR', `Serverinfo command failed: ${error.message}`);
+            message.reply('❌ Failed to fetch server information.');
+        }
+    }
+    
+    // ============================================
+    // NEW COMMAND 2: .userinfo [@user]
+    // ============================================
+    else if (command === 'userinfo') {
+        const logData = ExtremeLogger.logSuperDetailedCommand(message, 'userinfo', args, 'Fetching user info');
+        
+        try {
+            const target = message.mentions.members.first() || message.member;
+            const user = target.user;
+            const member = target;
+            
+            // Calculate account age and server join age
+            const accountAge = Math.floor((Date.now() - user.createdTimestamp) / (1000 * 60 * 60 * 24));
+            const joinAge = member.joinedAt ? Math.floor((Date.now() - member.joinedAt.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+            
+            // Get roles (excluding @everyone)
+            const roles = member.roles.cache.filter(role => role.name !== '@everyone').map(role => role.toString());
+            
+            const embed = new EmbedBuilder()
+                .setTitle(`👤 User Information: ${user.tag}`)
+                .setColor(member.displayColor || 0x5865F2)
+                .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
+                .addFields(
+                    { name: '🆔 User ID', value: user.id, inline: true },
+                    { name: '📛 Nickname', value: member.nickname || 'None', inline: true },
+                    { name: '🤖 Bot', value: user.bot ? 'Yes' : 'No', inline: true },
+                    { name: '📅 Account Created', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>\n(${accountAge} days ago)`, inline: false },
+                    { name: '📥 Joined Server', value: member.joinedAt ? `<t:${Math.floor(member.joinedAt.getTime() / 1000)}:R>\n(${joinAge} days ago)` : 'Unknown', inline: false },
+                    { name: '👑 Highest Role', value: member.roles.highest.toString(), inline: true },
+                    { name: '🎭 Role Count', value: `${roles.length}`, inline: true },
+                    { name: '🚀 Boosting', value: member.premiumSince ? `Since <t:${Math.floor(member.premiumSince.getTime() / 1000)}:R>` : 'Not boosting', inline: false }
+                )
+                .setFooter({ text: `Requested by ${message.author.tag}` })
+                .setTimestamp();
+            
+            // Add roles field if there are roles
+            if (roles.length > 0) {
+                embed.addFields({ 
+                    name: `🎭 Roles (${roles.length})`, 
+                    value: roles.slice(0, 10).join(' ') + (roles.length > 10 ? `\n...and ${roles.length - 10} more` : ''),
+                    inline: false 
+                });
+            }
+            
+            await message.channel.send({ embeds: [embed] });
+            
+        } catch (error) {
+            ExtremeLogger.log('ERROR', `Userinfo command failed: ${error.message}`);
+            message.reply('❌ Failed to fetch user information.');
+        }
+    }
+    
+    // ============================================
+    // NEW COMMAND 3: .clean [amount]
+    // ============================================
+    else if (command === 'clean' || command === 'clear' || command === 'purge') {
+        const logData = ExtremeLogger.logSuperDetailedCommand(message, 'clean', args, 'Cleaning messages');
+        
+        try {
+            if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+                ExtremeLogger.log('WARNING', `${message.author.tag} attempted .clean without Manage Messages permission`);
+                return message.reply('❌ You need Manage Messages permission!');
+            }
+            
+            const amount = parseInt(args[0]);
+            if (!amount || amount < 1 || amount > 100) {
+                return message.reply('❌ Please specify a number between 1 and 100!');
+            }
+            
+            // Delete the command message first
+            await message.delete().catch(() => {});
+            
+            // Fetch and delete messages
+            const fetched = await message.channel.messages.fetch({ limit: amount + 1 });
+            const toDelete = fetched.filter(msg => !msg.pinned);
+            
+            if (toDelete.size === 0) {
+                return message.channel.send('❌ No messages to delete.').then(msg => setTimeout(() => msg.delete(), 3000));
+            }
+            
+            const deleted = await message.channel.bulkDelete(toDelete, true);
+            
+            // Send confirmation
+            const confirmation = await message.channel.send(`✅ Deleted ${deleted.size} message(s).`);
+            
+            // Log the cleanup
+            ExtremeLogger.log('MOD_COMMAND', `Cleaned ${deleted.size} messages in #${message.channel.name} by ${message.author.tag}`);
+            
+            // Delete confirmation after 3 seconds
+            setTimeout(() => confirmation.delete().catch(() => {}), 3000);
+            
+        } catch (error) {
+            ExtremeLogger.log('ERROR', `Clean command failed: ${error.message}`);
+            message.reply('❌ Failed to clean messages. Make sure messages are not older than 14 days.');
+        }
+    }
+    
+    // ============================================
+    // EXISTING COMMANDS WITH EXTREME LOGGING
+    // ============================================
+    
+    // .role command
+    else if (command === 'role') {
+        const logData = ExtremeLogger.logSuperDetailedCommand(message, 'role', args, 'Role assignment');
+        
+        try {
+            if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+                return message.reply('❌ You need Manage Roles permission!');
+            }
+            
+            const member = message.mentions.members.first();
+            if (!member) return message.reply('❌ Mention a member!');
+            
+            const roleName = args.slice(1).join(' ');
+            if (!roleName) return message.reply('❌ Specify a role name!');
+            
+            const role = guild.roles.cache.find(r => 
+                r.name.toLowerCase() === roleName.toLowerCase() || 
+                r.name === applyCustomFont(roleName)
+            );
+            
+            if (!role) return message.reply(`❌ Role "${roleName}" not found!`);
+            if (!role.editable) return message.reply('❌ Cannot manage that role!');
+            
+            if (member.roles.cache.has(role.id)) {
+                await member.roles.remove(role);
+                await message.reply(`✅ Removed **${role.name}** from ${member}`);
+                logData.result = `Removed role ${role.name}`;
+            } else {
+                await member.roles.add(role);
+                await message.reply(`✅ Added **${role.name}** to ${member}`);
+                logData.result = `Added role ${role.name}`;
+            }
+            
+        } catch (error) {
+            ExtremeLogger.log('ERROR', `Role command failed: ${error.message}`);
+            message.reply(`❌ Error: ${error.message}`);
+        }
+    }
+    
+    // .ping command
+    else if (command === 'ping') {
+        const logData = ExtremeLogger.logSuperDetailedCommand(message, 'ping', args, 'Latency check');
+        
+        const sent = await message.channel.send('🏓 Pinging...');
+        const latency = sent.createdTimestamp - message.createdTimestamp;
+        const apiLatency = Math.round(client.ws.ping);
+        
+        const embed = new EmbedBuilder()
+            .setTitle('🏓 Pong!')
+            .setColor(0x00FF00)
+            .addFields(
+                { name: '📡 Bot Latency', value: `${latency}ms`, inline: true },
+                { name: '🌐 API Latency', value: `${apiLatency}ms`, inline: true },
+                { name: '🖥️ Uptime', value: ExtremeLogger.getStats().uptime, inline: true }
+            )
+            .setTimestamp();
+        
+        await sent.edit({ content: null, embeds: [embed] });
+        logData.result = `Bot: ${latency}ms, API: ${apiLatency}ms`;
+    }
+    
+    // .embed command
+    else if (command === 'embed') {
+        const logData = ExtremeLogger.logSuperDetailedCommand(message, 'embed', args, 'Embed creation');
+        
+        const text = args.join(' ');
+        if (!text) return message.reply('❌ Provide text!');
+        
+        const embed = new EmbedBuilder()
+            .setDescription(text)
+            .setColor(0x5865F2)
+            .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+            .setTimestamp();
+        
+        await message.channel.send({ embeds: [embed] });
+        logData.result = `Created embed: ${text.substring(0, 30)}...`;
+    }
+    
+    // .membercount command
+    else if (command === 'membercount') {
+        const logData = ExtremeLogger.logSuperDetailedCommand(message, 'membercount', args, 'Member count');
+        
+        const members = await guild.members.fetch();
+        const total = members.size;
+        const online = members.filter(m => m.presence?.status === 'online').size;
+        
+        const embed = new EmbedBuilder()
+            .setTitle(`👥 ${guild.name} Member Statistics`)
+            .setColor(0x5865F2)
+            .addFields(
+                { name: '📊 Total Members', value: `${total}`, inline: true },
+                { name: '🟢 Online', value: `${online}`, inline: true }
+            )
+            .setTimestamp();
+        
+        await message.channel.send({ embeds: [embed] });
+        logData.result = `Total: ${total}, Online: ${online}`;
+    }
+    
+    // .help command
+    else if (command === 'help') {
+        ExtremeLogger.logSuperDetailedCommand(message, 'help', args, 'Help menu');
+        
+        const embed = new EmbedBuilder()
+            .setTitle('❓ Bot Help Menu')
+            .setDescription(`Prefix: \`${prefix}\``)
+            .setColor(0x5865F2)
+            .addFields(
+                { name: '🔧 New Utility Commands', value: '```.serverinfo - Server details\n.userinfo [@user] - User details\n.clean [1-100] - Delete messages```', inline: false },
+                { name: '📊 Existing Commands', value: '```.ping - Check latency\n.embed <text> - Create embed\n.membercount - Member stats\n.role @member <role> - Assign roles\n.stats - Bot statistics```', inline: false }
+            )
+            .setFooter({ text: `Total commands: 20+` })
+            .setTimestamp();
+        
+        await message.channel.send({ embeds: [embed] });
+    }
+    
+    // .stats command
+    else if (command === 'stats') {
+        const logData = ExtremeLogger.logSuperDetailedCommand(message, 'stats', args, 'Bot statistics');
+        
+        const stats = ExtremeLogger.getStats();
+        const commandHistory = ExtremeLogger.getCommandHistory(5);
+        
+        const embed = new EmbedBuilder()
+            .setTitle('📈 Bot Statistics')
+            .setColor(0x5865F2)
+            .addFields(
+                { name: '⏱️ Uptime', value: stats.uptime, inline: true },
+                { name: '📊 Commands Executed', value: stats.totalCommands.toString(), inline: true },
+                { name: '⚠️ Total Errors', value: stats.totalErrors.toString(), inline: true },
+                { name: '💾 Memory Usage', value: stats.memoryUsage.heapUsed, inline: true },
+                { name: '📡 Servers', value: client.guilds.cache.size.toString(), inline: true }
+            );
+        
+        if (commandHistory.length > 0) {
+            embed.addFields({
+                name: '📝 Recent Commands',
+                value: commandHistory.map(cmd => `\`${cmd.time.split(' ')[1]}\` ${cmd.user}: ${prefix}${cmd.command}`).join('\n'),
+                inline: false
+            });
+        }
+        
+        await message.channel.send({ embeds: [embed] });
+    }
+    
+    // Add all your other existing commands here...
+    // Make sure each one uses ExtremeLogger.logSuperDetailedCommand
+    
+    // Example for .kick command:
+    else if (command === 'kick') {
+        const logData = ExtremeLogger.logSuperDetailedCommand(message, 'kick', args, 'Member kick');
+        
+        if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
+            return message.reply('❌ Kick permission required!');
+        }
+        
+        const member = message.mentions.members.first();
+        if (!member) return message.reply('❌ Mention a member!');
+        
+        const reason = args.slice(1).join(' ') || 'No reason';
+        
+        try {
+            await member.kick(reason);
+            const embed = new EmbedBuilder()
+                .setTitle('👢 Member Kicked')
+                .setDescription(`${member} was kicked`)
+                .setColor(0xFFA500)
+                .addFields(
+                    { name: 'Reason', value: reason },
+                    { name: 'Moderator', value: message.author.toString() }
+                );
+            await message.channel.send({ embeds: [embed] });
+            logData.result = `Kicked ${member.user.tag} for: ${reason}`;
+        } catch (err) {
+            message.reply(`❌ Failed: ${err.message}`);
+            logData.result = `Failed: ${err.message}`;
+        }
+    }
+    
+    // Add all your other commands similarly...
+    // Continue with ban, mute, rolelistembed, roleinfoembed, etc.
+    
+});
+
+// SLASH COMMANDS HANDLER
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isCommand()) return;
+    
+    const { commandName, options } = interaction;
+    const guild = interaction.guild;
+    
+    ExtremeLogger.log('COMMAND', `Slash command: /${commandName} by ${interaction.user.tag}`, {
+        user: interaction.user.tag,
+        userId: interaction.user.id,
+        guild: guild?.name || 'DM',
+        guildId: guild?.id,
+        channel: interaction.channel?.name || 'Unknown',
+        channelId: interaction.channelId,
+        options: options.data
+    });
+    
+    if (commandName === 'ping') {
+        const latency = Date.now() - interaction.createdTimestamp;
+        const apiLatency = Math.round(client.ws.ping);
+        
+        const embed = new EmbedBuilder()
+            .setTitle('🏓 Pong!')
+            .setColor(0x00FF00)
+            .addFields(
+                { name: '📡 Bot Latency', value: `${latency}ms`, inline: true },
+                { name: '🌐 API Latency', value: `${apiLatency}ms`, inline: true }
+            );
+        
+        await interaction.reply({ embeds: [embed] });
+    }
+    
+    else if (commandName === 'serverinfo') {
+        const guild = interaction.guild;
+        const owner = await guild.fetchOwner();
+        
+        const embed = new EmbedBuilder()
+            .setTitle(`🏰 ${guild.name} Server Info`)
+            .setColor(0x5865F2)
+            .addFields(
+                { name: '👑 Owner', value: owner.user.tag, inline: true },
+                { name: '👥 Members', value: `${guild.memberCount}`, inline: true },
+                { name: '📅 Created', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true }
+            );
+        
+        await interaction.reply({ embeds: [embed] });
+    }
+    
+    else if (commandName === 'userinfo') {
+        const user = options.getUser('user') || interaction.user;
+        const member = await guild.members.fetch(user.id);
+        
+        const embed = new EmbedBuilder()
+            .setTitle(`👤 ${user.tag}`)
+            .setColor(0x5865F2)
+            .addFields(
+                { name: '🆔 User ID', value: user.id, inline: true },
+                { name: '📅 Account Created', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: true }
+            );
+        
+        await interaction.reply({ embeds: [embed] });
+    }
+    
+    else if (commandName === 'clean') {
+        if (!interaction.memberPermissions.has(PermissionsBitField.Flags.ManageMessages)) {
+            return interaction.reply({ content: '❌ Need Manage Messages permission!', ephemeral: true });
+        }
+        
+        const amount = options.getInteger('amount') || 10;
+        if (amount < 1 || amount > 100) {
+            return interaction.reply({ content: '❌ Amount must be 1-100!', ephemeral: true });
+        }
+        
+        await interaction.deferReply({ ephemeral: true });
+        
+        const fetched = await interaction.channel.messages.fetch({ limit: amount });
+        const deleted = await interaction.channel.bulkDelete(fetched, true);
+        
+        await interaction.editReply({ content: `✅ Deleted ${deleted.size} message(s).` });
+    }
+});
+
+// ERROR HANDLING
+client.on('error', (error) => {
+    ExtremeLogger.log('ERROR', `Discord Client Error: ${error.message}`, error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    ExtremeLogger.log('ERROR', `Unhandled Promise Rejection: ${reason}`, { promise });
+});
+
+// START BOT
+ExtremeLogger.log('SYSTEM', '══════════════════════════════════════════════════════════');
+ExtremeLogger.log('SYSTEM', '🚀 STARTING DISCORD BOT WITH EXTREME LOGGING V3.0');
+ExtremeLogger.log('SYSTEM', '══════════════════════════════════════════════════════════');
+ExtremeLogger.log('INFO', `Start Time: ${new Date().toISOString()}`);
+ExtremeLogger.log('INFO', `Node.js: ${process.version}`);
+ExtremeLogger.log('INFO', `Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+
+client.login(TOKEN).catch(err => {
+    ExtremeLogger.log('ERROR', '══════════════════════════════════════════════════════════');
+    ExtremeLogger.log('ERROR', '❌ BOT LOGIN FAILED!');
+    ExtremeLogger.log('ERROR', '══════════════════════════════════════════════════════════');
+    ExtremeLogger.log('ERROR', `Error: ${err.message}`);
+    ExtremeLogger.log('ERROR', `Stack: ${err.stack}`);
+    process.exit(1);
+});
