@@ -1,29 +1,28 @@
-const { Client, GatewayIntentBits, Collection, EmbedBuilder, PermissionsBitField, ChannelType, REST, Routes } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ChannelType, REST, Routes, Collection } = require('discord.js');
 
-// Bot setup
+// GET TOKEN FROM RENDER ENVIRONMENT
+const TOKEN = process.env.DISCORD_TOKEN;
+const GUILD_ID = process.env.GUILD_ID;
+const CLIENT_ID = process.env.CLIENT_ID;
+
+// BOT SETUP
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildMessageReactions
+        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.GuildVoiceStates
     ]
 });
 
-// Configuration
-const TOKEN = process.env.DISCORD_TOKEN;
-const GUILD_ID = process.env.GUILD_ID;
-const CLIENT_ID = process.env.CLIENT_ID;
-
-// Storage
-let welcomeChannelId = null;
-let leaveChannelId = null;
-
-// Command prefix
+// GLOBAL STORAGE
+let welcomeChannel = null;
+let leaveChannel = null;
 const prefix = '.';
 
-// Ranking roles
+// RANKING ROLES
 const RANKING_ROLES = [
     "Observer I", "Observer II", "Observer III",
     "Initiate I", "Initiate II", "Initiate III",
@@ -49,560 +48,358 @@ const RANKING_ROLES = [
     "Zethithal I", "Zethithal II", "Zethithal III"
 ];
 
-// Channel structure
-const CHANNEL_STRUCTURE = [
-    {
-        name: "📁 0. Uncategorized",
-        channels: [
-            "📝 verification-request",
-            "⏳ waiting-lounge", 
-            "✅ agreement-verification"
-        ]
-    },
-    {
-        name: "🎉 1. Welcome & Info",
-        channels: [
-            "👋 welcome-chat",
-            "👋 leave-chat",
-            "📢 announcements",
-            "📜 rules",
-            "🏰 clan-info",
-            "🏆 achievements",
-            "📅 events",
-            "📚 resources"
-        ]
-    },
-    {
-        name: "🔧 2. Misc",
-        channels: [
-            "👥 role-list",
-            "ℹ️ role-information",
-            "🎯 target-list",
-            "🤝 clan-allies",
-            "🌐 clan-allies-servers",
-            "⚔️ clan-wars"
-        ]
-    },
-    {
-        name: "💬 3. Lounge",
-        channels: [
-            "💭 general-chat",
-            "🎮 game-chat",
-            "🖼️ media",
-            "🎵 music",
-            "🗣️ off-topic",
-            "🔊 voice-chat"
-        ]
-    },
-    {
-        name: "🤝 4. Clan Allies",
-        channels: [
-            "💬 allies-chat",
-            "🖼️ allies-media",
-            "📜 treaties",
-            "💡 alliance-ideas",
-            "📝 alliance-notes",
-            "💬 discussion"
-        ]
-    },
-    {
-        name: "🎓 5. Training",
-        channels: [
-            "📈 progress",
-            "👨‍🏫 mentor-chat",
-            "🖼️ mentors-media",
-            "💡 tips",
-            "⚔️ strategies",
-            "📊 tracking",
-            "🔄 practice-sessions",
-            "📝 feedback"
-        ]
-    },
-    {
-        name: "📋 6. Evaluation",
-        channels: [
-            "📄 evaluation-template",
-            "📊 evaluations-results",
-            "🔄 retake-evaluation",
-            "📝 evaluation-request",
-            "🔒 private-servers"
-        ]
-    }
+// CHANNEL STRUCTURE
+const CHANNELS = [
+    { name: "📁 0. Uncategorized", channels: [
+        "📝 verification-request", "⏳ waiting-lounge", "✅ agreement-verification"
+    ]},
+    { name: "🎉 1. Welcome & Info", channels: [
+        "👋 welcome-chat", "👋 leave-chat", "📢 announcements", "📜 rules",
+        "🏰 clan-info", "🏆 achievements", "📅 events", "📚 resources"
+    ]},
+    { name: "🔧 2. Misc", channels: [
+        "👥 role-list", "ℹ️ role-information", "🎯 target-list", "🤝 clan-allies",
+        "🌐 clan-allies-servers", "⚔️ clan-wars"
+    ]},
+    { name: "💬 3. Lounge", channels: [
+        "💭 general-chat", "🎮 game-chat", "🖼️ media", "🎵 music",
+        "🗣️ off-topic", "🔊 voice-chat"
+    ]},
+    { name: "🤝 4. Clan Allies", channels: [
+        "💬 allies-chat", "🖼️ allies-media", "📜 treaties", "💡 alliance-ideas",
+        "📝 alliance-notes", "💬 discussion"
+    ]},
+    { name: "🎓 5. Training", channels: [
+        "📈 progress", "👨‍🏫 mentor-chat", "🖼️ mentors-media", "💡 tips",
+        "⚔️ strategies", "📊 tracking", "🔄 practice-sessions", "📝 feedback"
+    ]},
+    { name: "📋 6. Evaluation", channels: [
+        "📄 evaluation-template", "📊 evaluations-results", "🔄 retake-evaluation",
+        "📝 evaluation-request", "🔒 private-servers"
+    ]}
 ];
 
-// Role categories
-const ROLE_CATEGORIES = [
-    {
-        name: "Partial Access",
-        color: "Blue",
-        roles: [
-            { name: "Partial Access Members", color: "#3498db" },
-            { name: "Partial Access Allies", color: "#3498db" },
-            { name: "Partial Access Training", color: "#3498db" },
-            { name: "Partial Access Misc", color: "#3498db" },
-            { name: "Partial Access Information", color: "#3498db" }
-        ]
-    },
-    {
-        name: "Access Roles",
-        color: "Green",
-        roles: [
-            { name: "Members", color: "#2ecc71" },
-            { name: "Allies", color: "#2ecc71" },
-            { name: "Rank Evaluators", color: "#27ae60" },
-            { name: "Rank Approvals", color: "#27ae60" },
-            { name: "Training Access", color: "#2ecc71" },
-            { name: "Allies Access", color: "#2ecc71" },
-            { name: "Misc Access", color: "#2ecc71" },
-            { name: "Information Access", color: "#2ecc71" },
-            { name: "Announcements Access", color: "#2ecc71" },
-            { name: "Events Access", color: "#2ecc71" },
-            { name: "Target List Access", color: "#2ecc71" }
-        ]
-    },
-    {
-        name: "Status Roles",
-        color: "Purple",
-        roles: [
-            { name: "Enemies", color: "#e74c3c" },
-            { name: "Traitor", color: "#c0392b" },
-            { name: "Trusted", color: "#9b59b6" },
-            { name: "Friends", color: "#9b59b6" },
-            { name: "Emojis Permissions", color: "#f1c40f" },
-            { name: "Stickers Permissions", color: "#f1c40f" },
-            { name: "Gifs Permissions", color: "#f1c40f" },
-            { name: "Image Permissions", color: "#f1c40f" },
-            { name: "Slowmode Bypass", color: "#f1c40f" }
-        ]
-    },
-    {
-        name: "Leadership",
-        color: "Red",
-        roles: [
-            { name: "Leader", color: "#e74c3c" },
-            { name: "Leader Assistant", color: "#c0392b" },
-            { name: "Council Leader", color: "#c0392b" },
-            { name: "Council Assistant", color: "#c0392b" },
-            { name: "Council Of Security", color: "#c0392b" },
-            { name: "Council Of Strategy", color: "#c0392b" },
-            { name: "Council Of Training", color: "#c0392b" },
-            { name: "Council Of Creation", color: "#c0392b" },
-            { name: "Right Hand", color: "#c0392b" },
-            { name: "Left Hand", color: "#c0392b" },
-            { name: "Messager", color: "#c0392b" }
-        ]
-    },
-    {
-        name: "Special",
-        color: "Orange",
-        roles: [
-            { name: "Bots", color: "#7f8c8d" },
-            { name: "Scripter", color: "#e67e22" },
-            { name: "Coder", color: "#e67e22" },
-            { name: "Evaluation Access", color: "#e67e22" }
-        ]
-    },
-    {
-        name: "Verification",
-        color: "Blurple",
-        roles: [
-            { name: "Evaluation Needed", color: "#f1c40f" },
-            { name: "Verification Needed", color: "#f1c40f" },
-            { name: "Agreement Needed", color: "#f1c40f" },
-            { name: "Verification Accepted", color: "#2ecc71" },
-            { name: "Agreement Accepted", color: "#2ecc71" },
-            { name: "Agreement Denied", color: "#e74c3c" },
-            { name: "Been Evaluated", color: "#3498db" },
-            { name: "Accepted", color: "#2ecc71" },
-            { name: "Access Removed", color: "#c0392b" }
-        ]
-    }
+// ALL ROLES TO CREATE
+const ALL_ROLES = [
+    // Partial Access
+    { name: "Partial Access Members", color: "#3498db" },
+    { name: "Partial Access Allies", color: "#3498db" },
+    { name: "Partial Access Training", color: "#3498db" },
+    { name: "Partial Access Misc", color: "#3498db" },
+    { name: "Partial Access Information", color: "#3498db" },
+    
+    // Access Roles
+    { name: "Members", color: "#2ecc71" },
+    { name: "Allies", color: "#2ecc71" },
+    { name: "Rank Evaluators", color: "#27ae60" },
+    { name: "Rank Approvals", color: "#27ae60" },
+    { name: "Training Access", color: "#2ecc71" },
+    { name: "Allies Access", color: "#2ecc71" },
+    { name: "Misc Access", color: "#2ecc71" },
+    { name: "Information Access", color: "#2ecc71" },
+    { name: "Announcements Access", color: "#2ecc71" },
+    { name: "Events Access", color: "#2ecc71" },
+    { name: "Target List Access", color: "#2ecc71" },
+    
+    // Status Roles
+    { name: "Enemies", color: "#e74c3c" },
+    { name: "Traitor", color: "#c0392b" },
+    { name: "Trusted", color: "#9b59b6" },
+    { name: "Friends", color: "#9b59b6" },
+    { name: "Emojis Permissions", color: "#f1c40f" },
+    { name: "Stickers Permissions", color: "#f1c40f" },
+    { name: "Gifs Permissions", color: "#f1c40f" },
+    { name: "Image Permissions", color: "#f1c40f" },
+    { name: "Slowmode Bypass", color: "#f1c40f" },
+    
+    // Leadership
+    { name: "Leader", color: "#e74c3c" },
+    { name: "Leader Assistant", color: "#c0392b" },
+    { name: "Council Leader", color: "#c0392b" },
+    { name: "Council Assistant", color: "#c0392b" },
+    { name: "Council Of Security", color: "#c0392b" },
+    { name: "Council Of Strategy", color: "#c0392b" },
+    { name: "Council Of Training", color: "#c0392b" },
+    { name: "Council Of Creation", color: "#c0392b" },
+    { name: "Right Hand", color: "#c0392b" },
+    { name: "Left Hand", color: "#c0392b" },
+    { name: "Messager", color: "#c0392b" },
+    
+    // Special
+    { name: "Bots", color: "#7f8c8d" },
+    { name: "Scripter", color: "#e67e22" },
+    { name: "Coder", color: "#e67e22" },
+    { name: "Evaluation Access", color: "#e67e22" },
+    
+    // Verification
+    { name: "Evaluation Needed", color: "#f1c40f" },
+    { name: "Verification Needed", color: "#f1c40f" },
+    { name: "Agreement Needed", color: "#f1c40f" },
+    { name: "Verification Accepted", color: "#2ecc71" },
+    { name: "Agreement Accepted", color: "#2ecc71" },
+    { name: "Agreement Denied", color: "#e74c3c" },
+    { name: "Been Evaluated", color: "#3498db" },
+    { name: "Accepted", color: "#2ecc71" },
+    { name: "Access Removed", color: "#c0392b" }
 ];
 
-// Register slash commands
-async function registerSlashCommands() {
-    const commands = [
-        {
-            name: 'rolelist',
-            description: 'Send embed with all ranking roles'
-        },
-        {
-            name: 'roleinfo',
-            description: 'Display ranking information'
-        },
-        {
-            name: 'claninfo',
-            description: 'Display clan information'
-        },
-        {
-            name: 'rules',
-            description: 'Display server rules'
-        },
-        {
-            name: 'kick',
-            description: 'Kick a member',
-            options: [
-                {
-                    name: 'member',
-                    description: 'Member to kick',
-                    type: 6,
-                    required: true
-                },
-                {
-                    name: 'reason',
-                    description: 'Reason for kicking',
-                    type: 3,
-                    required: false
-                }
-            ]
-        },
-        {
-            name: 'ban',
-            description: 'Ban a member',
-            options: [
-                {
-                    name: 'member',
-                    description: 'Member to ban',
-                    type: 6,
-                    required: true
-                },
-                {
-                    name: 'reason',
-                    description: 'Reason for banning',
-                    type: 3,
-                    required: false
-                }
-            ]
-        },
-        {
-            name: 'mute',
-            description: 'Mute a member',
-            options: [
-                {
-                    name: 'member',
-                    description: 'Member to mute',
-                    type: 6,
-                    required: true
-                },
-                {
-                    name: 'reason',
-                    description: 'Reason for muting',
-                    type: 3,
-                    required: false
-                }
-            ]
-        }
-    ];
-
+// BOT READY EVENT
+client.once('ready', async () => {
+    console.log(`✅ Bot Online: ${client.user.tag}`);
+    console.log(`📊 Servers: ${client.guilds.cache.size}`);
+    
+    // Set bot status
+    client.user.setActivity(`${prefix}help`, { type: 'LISTENING' });
+    
+    // Register slash commands
     try {
         const rest = new REST({ version: '10' }).setToken(TOKEN);
-        console.log('Registering slash commands...');
-        await rest.put(
-            Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
-            { body: commands }
-        );
-        console.log('Slash commands registered!');
-    } catch (error) {
-        console.error('Error registering commands:', error);
+        const commands = [
+            { name: 'rolelist', description: 'Show ranking roles' },
+            { name: 'roleinfo', description: 'Show role information' },
+            { name: 'claninfo', description: 'Show clan information' },
+            { name: 'rules', description: 'Show server rules' },
+            { name: 'kick', description: 'Kick a member', options: [
+                { name: 'member', description: 'Member to kick', type: 6, required: true },
+                { name: 'reason', description: 'Reason for kick', type: 3, required: false }
+            ]},
+            { name: 'ban', description: 'Ban a member', options: [
+                { name: 'member', description: 'Member to ban', type: 6, required: true },
+                { name: 'reason', description: 'Reason for ban', type: 3, required: false }
+            ]},
+            { name: 'mute', description: 'Mute a member', options: [
+                { name: 'member', description: 'Member to mute', type: 6, required: true },
+                { name: 'reason', description: 'Reason for mute', type: 3, required: false }
+            ]}
+        ];
+        
+        await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
+        console.log('✅ Slash commands registered');
+    } catch (err) {
+        console.log('⚠️ Could not register slash commands:', err.message);
     }
-}
-
-// Event: Bot ready
-client.once('ready', async () => {
-    console.log(`${client.user.tag} is online!`);
-    await registerSlashCommands();
 });
 
-// Event: Member join
-client.on('guildMemberAdd', async (member) => {
-    if (welcomeChannelId) {
-        const channel = member.guild.channels.cache.get(welcomeChannelId);
+// WELCOME EVENT
+client.on('guildMemberAdd', async member => {
+    if (welcomeChannel) {
+        const channel = await client.channels.fetch(welcomeChannel).catch(() => null);
         if (channel) {
             const embed = new EmbedBuilder()
-                .setTitle("🎉 Welcome to the Server!")
+                .setTitle('🎉 Welcome to the Server!')
                 .setDescription(`Welcome ${member} to our community!`)
                 .setColor(0x00FF00)
-                .addFields(
-                    { name: "Important Info", value: "Please check the rules and verification channels to get started." }
-                )
-                .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+                .addFields({ name: 'Important Info', value: 'Check rules and verification channels to get started.' })
+                .setThumbnail(member.user.displayAvatarURL())
                 .setTimestamp();
-
             await channel.send({ content: `${member}`, embeds: [embed] });
         }
     }
 });
 
-// Event: Member leave
-client.on('guildMemberRemove', async (member) => {
-    if (leaveChannelId) {
-        const channel = member.guild.channels.cache.get(leaveChannelId);
+// LEAVE EVENT
+client.on('guildMemberRemove', async member => {
+    if (leaveChannel) {
+        const channel = await client.channels.fetch(leaveChannel).catch(() => null);
         if (channel) {
             const embed = new EmbedBuilder()
-                .setTitle("👋 Goodbye!")
-                .setDescription(`${member.user.tag} has left the server.`)
+                .setTitle('👋 Goodbye!')
+                .setDescription(`${member.user.tag} has left.`)
                 .setColor(0xFF0000)
-                .addFields(
-                    { name: "We'll miss you!", value: "Hope to see you again soon!" }
-                )
+                .addFields({ name: 'We\'ll miss you!', value: 'Hope to see you again!' })
                 .setTimestamp();
-
             await channel.send({ embeds: [embed] });
         }
     }
 });
 
-// Message commands handler
-client.on('messageCreate', async (message) => {
+// PREFIX COMMANDS HANDLER
+client.on('messageCreate', async message => {
     if (message.author.bot || !message.content.startsWith(prefix)) return;
-
+    
     const args = message.content.slice(prefix.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
-
+    const guild = message.guild;
+    
     // COMMAND 1: .rolelistembed
     if (command === 'rolelistembed') {
-        const guild = message.guild;
-        const rankingMentions = [];
-        
-        for (const roleName of RANKING_ROLES) {
-            const role = guild.roles.cache.find(r => r.name === roleName);
-            if (role) rankingMentions.push(role.toString());
-        }
-
+        const roles = guild.roles.cache.filter(r => RANKING_ROLES.includes(r.name));
         const embed = new EmbedBuilder()
-            .setTitle("📊 Ranking Roles List")
-            .setDescription("Here are all the ranking roles in the server:")
+            .setTitle('📊 Ranking Roles List')
+            .setDescription('All ranking roles:')
             .setColor(0x3498db);
-
-        const chunks = [];
-        for (let i = 0; i < rankingMentions.length; i += 20) {
-            chunks.push(rankingMentions.slice(i, i + 20));
-        }
-
-        chunks.forEach((chunk, index) => {
-            embed.addFields({
-                name: `Rankings Part ${index + 1}`,
-                value: chunk.join('\n') || "No roles found",
-                inline: false
-            });
-        });
-
-        const pingRoles = guild.roles.cache.filter(r => RANKING_ROLES.includes(r.name)).first(5);
-        await message.channel.send({ 
-            content: pingRoles.map(r => r.toString()).join(' '),
-            embeds: [embed] 
-        });
+        
+        const roleList = roles.map(r => r.toString()).join('\n') || 'No ranking roles found';
+        embed.addFields({ name: 'Roles', value: roleList.substring(0, 1024) });
+        
+        const pingRoles = roles.first(5).map(r => r.toString()).join(' ');
+        await message.channel.send({ content: pingRoles || '', embeds: [embed] });
     }
-
+    
     // COMMAND 2: .roleinfoembed
-    else if (command === 'roleinfoembed') {
+    if (command === 'roleinfoembed') {
         const embed = new EmbedBuilder()
-            .setTitle("ℹ️ Role Information")
-            .setDescription("Explanation of all ranking levels:")
+            .setTitle('ℹ️ Role Information')
+            .setDescription('Ranking system explanation:')
             .setColor(0x2ecc71)
             .addFields(
-                { name: "Observer I-III", value: "Beginner levels - Learning the basics", inline: false },
-                { name: "Initiate I-III", value: "Starting to participate actively", inline: false },
-                { name: "Novitiate I-III", value: "Developing fundamental skills", inline: false },
-                { name: "Apprentice I-III", value: "Under guidance, building competence", inline: false },
-                { name: "Intermediate I-III", value: "Solid foundation, consistent performance", inline: false },
-                { name: "Practitioner I-III", value: "Applying skills effectively", inline: false },
-                { name: "Proficient I-III", value: "Highly skilled, reliable performer", inline: false },
-                { name: "Advanced I-III", value: "Expert level with deep knowledge", inline: false },
-                { name: "Experienced I-III", value: "Seasoned veteran with extensive experience", inline: false },
-                { name: "Advanced Practitioner I-III", value: "Mastering complex techniques", inline: false },
-                { name: "Ascendant I-III", value: "Rising to elite status", inline: false },
-                { name: "Transcendent I-III", value: "Beyond conventional mastery", inline: false },
-                { name: "Luminary I-III", value: "Guiding light for others", inline: false },
-                { name: "Prime Levels", value: "Peak performance in each tier", inline: false },
-                { name: "Eternal Levels", value: "Legendary status, enduring excellence", inline: false },
-                { name: "Omniscient/Nexithal/Zethithal", value: "Ultimate mastery and leadership", inline: false }
+                { name: 'Observer to Apprentice', value: 'Beginner to intermediate levels', inline: false },
+                { name: 'Intermediate to Proficient', value: 'Developing solid skills', inline: false },
+                { name: 'Advanced to Experienced', value: 'Expert level with deep knowledge', inline: false },
+                { name: 'Advanced Practitioner to Luminary', value: 'Mastering complex techniques', inline: false },
+                { name: 'Prime Levels', value: 'Peak performance in each tier', inline: false },
+                { name: 'Eternal Levels', value: 'Legendary status', inline: false },
+                { name: 'Omniscient/Zethithal', value: 'Ultimate mastery and leadership', inline: false }
             );
-
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // COMMAND 3: .claninfoembed
-    else if (command === 'claninfoembed') {
+    if (command === 'claninfoembed') {
         const embed = new EmbedBuilder()
-            .setTitle("🏰 Clan Information")
-            .setDescription("Welcome to our community!")
+            .setTitle('🏰 Clan Information')
+            .setDescription('Welcome to our community!')
             .setColor(0xf1c40f)
             .addFields(
-                { name: "Who We Are", value: "We are a dedicated group of individuals focused on growth, teamwork, and excellence. Our community values respect, collaboration, and continuous improvement.", inline: false },
-                { name: "Our Mission", value: "To create a supportive environment where members can develop their skills, form lasting connections, and achieve their goals together.", inline: false },
-                { name: "Community Values", value: "• Respect for all members\n• Teamwork and collaboration\n• Continuous learning\n• Positive attitude\n• Active participation", inline: false },
-                { name: "How to Get Started", value: "1. Read the rules in #rules\n2. Complete verification in #verification-request\n3. Agree to our community guidelines\n4. Start participating in discussions and events!", inline: false }
-            )
-            .setFooter({ text: "We're glad to have you here!" });
-
+                { name: 'Who We Are', value: 'Dedicated group focused on growth, teamwork, and excellence.', inline: false },
+                { name: 'Our Mission', value: 'Create supportive environment for skill development and connections.', inline: false },
+                { name: 'Community Values', value: 'Respect • Teamwork • Learning • Positive Attitude • Participation', inline: false },
+                { name: 'Get Started', value: '1. Read #rules\n2. Complete verification\n3. Agree to guidelines\n4. Participate!', inline: false }
+            );
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // COMMAND 4: .Enablewelcomechat
-    else if (command === 'enablewelcomechat') {
-        welcomeChannelId = message.channel.id;
+    if (command === 'enablewelcomechat') {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            return message.reply('❌ You need administrator permissions!');
+        }
+        welcomeChannel = message.channel.id;
         const embed = new EmbedBuilder()
-            .setTitle("✅ Welcome Chat Enabled")
-            .setDescription(`Welcome messages will now be sent to ${message.channel}`)
-            .setColor(0x00FF00)
-            .addFields(
-                { name: "How it works", value: "Whenever a new member joins the server, they will be pinged with a welcome message here.", inline: false }
-            );
-
+            .setTitle('✅ Welcome Chat Enabled')
+            .setDescription(`Welcome messages will be sent to ${message.channel}`)
+            .setColor(0x00FF00);
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // COMMAND 5: .Enableleavechat
-    else if (command === 'enableleavechat') {
-        leaveChannelId = message.channel.id;
+    if (command === 'enableleavechat') {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            return message.reply('❌ You need administrator permissions!');
+        }
+        leaveChannel = message.channel.id;
         const embed = new EmbedBuilder()
-            .setTitle("✅ Leave Chat Enabled")
-            .setDescription(`Leave notifications will now be sent to ${message.channel}`)
-            .setColor(0xFFFF00)
-            .addFields(
-                { name: "How it works", value: "Whenever a member leaves the server, a goodbye message will be sent here.", inline: false }
-            );
-
+            .setTitle('✅ Leave Chat Enabled')
+            .setDescription(`Leave messages will be sent to ${message.channel}`)
+            .setColor(0x00FF00);
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // COMMAND 6: .Disablewelcomechat
-    else if (command === 'disablewelcomechat') {
-        welcomeChannelId = null;
+    if (command === 'disablewelcomechat') {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            return message.reply('❌ You need administrator permissions!');
+        }
+        welcomeChannel = null;
         const embed = new EmbedBuilder()
-            .setTitle("❌ Welcome Chat Disabled")
-            .setDescription("Welcome messages have been disabled.")
+            .setTitle('❌ Welcome Chat Disabled')
+            .setDescription('Welcome messages disabled')
             .setColor(0xFF0000);
-
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // COMMAND 7: .Disableleavechat
-    else if (command === 'disableleavechat') {
-        leaveChannelId = null;
+    if (command === 'disableleavechat') {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            return message.reply('❌ You need administrator permissions!');
+        }
+        leaveChannel = null;
         const embed = new EmbedBuilder()
-            .setTitle("❌ Leave Chat Disabled")
-            .setDescription("Leave notifications have been disabled.")
+            .setTitle('❌ Leave Chat Disabled')
+            .setDescription('Leave messages disabled')
             .setColor(0xFF0000);
-
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // COMMAND 8: .Rulesembed
-    else if (command === 'rulesembed') {
+    if (command === 'rulesembed') {
         const embed = new EmbedBuilder()
-            .setTitle("📜 Server Rules")
-            .setDescription("Please read and follow these rules to maintain a positive community:")
+            .setTitle('📜 Server Rules')
+            .setDescription('Follow these rules:')
             .setColor(0xFF0000)
             .addFields(
-                { name: "Rule 1: Respect", value: "Treat all members with respect. No harassment, hate speech, or discrimination.", inline: false },
-                { name: "Rule 2: No Spamming", value: "Do not spam channels with excessive messages, mentions, or content.", inline: false },
-                { name: "Rule 3: Appropriate Content", value: "Keep all content appropriate for all ages. No NSFW content.", inline: false },
-                { name: "Rule 4: No Advertising", value: "No unsolicited advertising or self-promotion without permission.", inline: false },
-                { name: "Rule 5: Follow Discord TOS", value: "You must follow Discord's Terms of Service at all times.", inline: false },
-                { name: "Rule 6: Use Proper Channels", value: "Post content in the appropriate channels only.", inline: false },
-                { name: "Rule 7: Listen to Staff", value: "Follow instructions from staff members and moderators.", inline: false },
-                { name: "Rule 8: No Drama", value: "Keep personal conflicts out of the server. Handle issues privately.", inline: false },
-                { name: "Rule 9: English Only", value: "Use English in public channels for moderation purposes.", inline: false },
-                { name: "Rule 10: Have Fun!", value: "This is a community - be friendly and enjoy your time here!", inline: false }
-            )
-            .setFooter({ text: "Violation of these rules may result in warnings, mutes, or bans." });
-
+                { name: 'Rule 1: Respect', value: 'Treat all members with respect.', inline: false },
+                { name: 'Rule 2: No Spamming', value: 'No excessive messages or mentions.', inline: false },
+                { name: 'Rule 3: Appropriate Content', value: 'Keep content appropriate. No NSFW.', inline: false },
+                { name: 'Rule 4: No Advertising', value: 'No unsolicited advertising.', inline: false },
+                { name: 'Rule 5: Follow Discord TOS', value: 'Follow Discord Terms of Service.', inline: false },
+                { name: 'Rule 6: Proper Channels', value: 'Post in correct channels.', inline: false },
+                { name: 'Rule 7: Listen to Staff', value: 'Follow staff instructions.', inline: false },
+                { name: 'Rule 8: No Drama', value: 'Keep conflicts private.', inline: false },
+                { name: 'Rule 9: English Only', value: 'Use English in public channels.', inline: false },
+                { name: 'Rule 10: Have Fun!', value: 'Be friendly and enjoy!', inline: false }
+            );
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // COMMAND 9: .Deleterankings
-    else if (command === 'deleterankings') {
+    if (command === 'deleterankings') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            return message.reply("You need administrator permissions to use this command.");
+            return message.reply('❌ You need administrator permissions!');
         }
-
-        const guild = message.guild;
         let deleted = 0;
-
         for (const roleName of RANKING_ROLES) {
             const role = guild.roles.cache.find(r => r.name === roleName);
             if (role) {
                 try {
                     await role.delete();
                     deleted++;
-                } catch (error) {
-                    console.error(`Failed to delete role ${roleName}:`, error);
-                }
+                } catch (err) {}
             }
         }
-
         const embed = new EmbedBuilder()
-            .setTitle("🗑️ Ranking Roles Deleted")
-            .setDescription(`Successfully deleted ${deleted} ranking roles.`)
+            .setTitle('🗑️ Ranking Roles Deleted')
+            .setDescription(`Deleted ${deleted} ranking roles`)
             .setColor(0xFF0000);
-
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // COMMAND 10: .Setuprankings
-    else if (command === 'setuprankings') {
+    if (command === 'setuprankings') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            return message.reply("You need administrator permissions to use this command.");
+            return message.reply('❌ You need administrator permissions!');
         }
-
-        const guild = message.guild;
         let created = 0;
-        const colors = [0x3498db, 0x2ecc71, 0x9b59b6]; // Blue, Green, Purple
-
+        const colors = [0x3498db, 0x2ecc71, 0x9b59b6];
         for (let i = 0; i < RANKING_ROLES.length; i++) {
             const roleName = RANKING_ROLES[i];
             if (!guild.roles.cache.find(r => r.name === roleName)) {
                 try {
-                    const color = colors[i % colors.length];
                     await guild.roles.create({
                         name: roleName,
-                        color: color,
+                        color: colors[i % colors.length],
                         mentionable: true,
-                        reason: 'Ranking role setup'
+                        reason: 'Ranking setup'
                     });
                     created++;
-                } catch (error) {
-                    console.error(`Failed to create role ${roleName}:`, error);
-                }
+                } catch (err) {}
             }
         }
-
-        // Reorder roles
-        const roles = guild.roles.cache.filter(r => RANKING_ROLES.includes(r.name));
-        const sortedRoles = Array.from(roles.values()).sort((a, b) => {
-            return RANKING_ROLES.indexOf(a.name) - RANKING_ROLES.indexOf(b.name);
-        });
-
-        // Try to reorder (Discord.js v14 doesn't have direct role position editing)
-        // Roles are automatically ordered by creation time
-
         const embed = new EmbedBuilder()
-            .setTitle("✅ Ranking Roles Created")
-            .setDescription(`Successfully created ${created} ranking roles.`)
+            .setTitle('✅ Ranking Roles Created')
+            .setDescription(`Created ${created} ranking roles`)
             .setColor(0x00FF00);
-
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // COMMAND 11: .Rolemake
-    else if (command === 'rolemake') {
+    if (command === 'rolemake') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            return message.reply("You need administrator permissions to use this command.");
+            return message.reply('❌ You need administrator permissions!');
         }
-
-        const guild = message.guild;
         let created = 0;
-        let existing = 0;
-
-        for (const category of ROLE_CATEGORIES) {
-            for (const roleData of category.roles) {
-                if (guild.roles.cache.find(r => r.name === roleData.name)) {
-                    existing++;
-                    continue;
-                }
-
+        for (const roleData of ALL_ROLES) {
+            if (!guild.roles.cache.find(r => r.name === roleData.name)) {
                 try {
                     await guild.roles.create({
                         name: roleData.name,
@@ -611,622 +408,500 @@ client.on('messageCreate', async (message) => {
                         reason: 'Role setup'
                     });
                     created++;
-                } catch (error) {
-                    console.error(`Failed to create role ${roleData.name}:`, error);
-                }
+                } catch (err) {}
             }
         }
-
         const embed = new EmbedBuilder()
-            .setTitle("✅ Roles Created")
-            .setDescription(`Created ${created} new roles. ${existing} roles already existed.`)
+            .setTitle('✅ Roles Created')
+            .setDescription(`Created ${created} roles`)
             .setColor(0x00FF00);
-
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // COMMAND 12: .Deleteroles
-    else if (command === 'deleteroles') {
+    if (command === 'deleteroles') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            return message.reply("You need administrator permissions to use this command.");
+            return message.reply('❌ You need administrator permissions!');
         }
-
-        const guild = message.guild;
         let deleted = 0;
-
         for (const role of guild.roles.cache.values()) {
             if (role.name !== '@everyone' && !role.managed && role.editable) {
                 try {
                     await role.delete();
                     deleted++;
-                } catch (error) {
-                    console.error(`Failed to delete role ${role.name}:`, error);
-                }
+                } catch (err) {}
             }
         }
-
         const embed = new EmbedBuilder()
-            .setTitle("🗑️ Roles Deleted")
-            .setDescription(`Successfully deleted ${deleted} roles.`)
+            .setTitle('🗑️ Roles Deleted')
+            .setDescription(`Deleted ${deleted} roles`)
             .setColor(0xFF0000);
-
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // COMMAND 13: .Kick
-    else if (command === 'kick') {
+    if (command === 'kick') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
-            return message.reply("You don't have permission to kick members!");
+            return message.reply('❌ You need kick permissions!');
         }
-
         const member = message.mentions.members.first();
-        if (!member) return message.reply("Please mention a member to kick.");
-
-        const reason = args.slice(1).join(' ') || "No reason provided";
-
+        if (!member) return message.reply('❌ Mention a member to kick!');
+        const reason = args.slice(1).join(' ') || 'No reason provided';
         try {
             await member.kick(reason);
             const embed = new EmbedBuilder()
-                .setTitle("👢 Member Kicked")
-                .setDescription(`${member} has been kicked.`)
+                .setTitle('👢 Member Kicked')
+                .setDescription(`${member} was kicked`)
                 .setColor(0xFFA500)
                 .addFields(
-                    { name: "Reason", value: reason, inline: false },
-                    { name: "Moderator", value: message.author.toString(), inline: false }
+                    { name: 'Reason', value: reason, inline: false },
+                    { name: 'Moderator', value: message.author.toString(), inline: false }
                 );
-
             await message.channel.send({ embeds: [embed] });
-        } catch (error) {
-            await message.reply(`Failed to kick member: ${error.message}`);
+        } catch (err) {
+            message.reply(`❌ Failed to kick: ${err.message}`);
         }
     }
-
+    
     // COMMAND 14: .ban
-    else if (command === 'ban') {
+    if (command === 'ban') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
-            return message.reply("You don't have permission to ban members!");
+            return message.reply('❌ You need ban permissions!');
         }
-
         const member = message.mentions.members.first();
-        if (!member) return message.reply("Please mention a member to ban.");
-
-        const reason = args.slice(1).join(' ') || "No reason provided";
-
+        if (!member) return message.reply('❌ Mention a member to ban!');
+        const reason = args.slice(1).join(' ') || 'No reason provided';
         try {
             await member.ban({ reason });
             const embed = new EmbedBuilder()
-                .setTitle("🔨 Member Banned")
-                .setDescription(`${member} has been banned.`)
+                .setTitle('🔨 Member Banned')
+                .setDescription(`${member} was banned`)
                 .setColor(0xFF0000)
                 .addFields(
-                    { name: "Reason", value: reason, inline: false },
-                    { name: "Moderator", value: message.author.toString(), inline: false }
+                    { name: 'Reason', value: reason, inline: false },
+                    { name: 'Moderator', value: message.author.toString(), inline: false }
                 );
-
             await message.channel.send({ embeds: [embed] });
-        } catch (error) {
-            await message.reply(`Failed to ban member: ${error.message}`);
+        } catch (err) {
+            message.reply(`❌ Failed to ban: ${err.message}`);
         }
     }
-
+    
     // COMMAND 15: .mute
-    else if (command === 'mute') {
+    if (command === 'mute') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-            return message.reply("You don't have permission to mute members!");
+            return message.reply('❌ You need manage roles permission!');
         }
-
         const member = message.mentions.members.first();
-        if (!member) return message.reply("Please mention a member to mute.");
-
-        const reason = args.slice(1).join(' ') || "No reason provided";
-        const guild = message.guild;
-
-        // Create or get muted role
-        let mutedRole = guild.roles.cache.find(r => r.name === "Muted");
-        if (!mutedRole) {
+        if (!member) return message.reply('❌ Mention a member to mute!');
+        const reason = args.slice(1).join(' ') || 'No reason provided';
+        
+        let muteRole = guild.roles.cache.find(r => r.name === 'Muted');
+        if (!muteRole) {
             try {
-                mutedRole = await guild.roles.create({
-                    name: "Muted",
-                    color: "#95a5a6",
+                muteRole = await guild.roles.create({
+                    name: 'Muted',
+                    color: '#95a5a6',
                     permissions: [],
-                    reason: 'Muted role for moderation'
+                    reason: 'Mute role'
                 });
-
-                // Set permissions for all channels
                 for (const channel of guild.channels.cache.values()) {
-                    await channel.permissionOverwrites.create(mutedRole, {
-                        SendMessages: false,
-                        Speak: false,
-                        AddReactions: false
-                    });
+                    try {
+                        await channel.permissionOverwrites.create(muteRole, {
+                            SendMessages: false,
+                            Speak: false
+                        });
+                    } catch (err) {}
                 }
-            } catch (error) {
-                return message.reply(`Failed to create muted role: ${error.message}`);
+            } catch (err) {
+                return message.reply(`❌ Failed to create mute role: ${err.message}`);
             }
         }
-
+        
         try {
-            await member.roles.add(mutedRole);
+            await member.roles.add(muteRole);
             const embed = new EmbedBuilder()
-                .setTitle("🔇 Member Muted")
-                .setDescription(`${member} has been muted.`)
+                .setTitle('🔇 Member Muted')
+                .setDescription(`${member} was muted`)
                 .setColor(0x95a5a6)
                 .addFields(
-                    { name: "Reason", value: reason, inline: false },
-                    { name: "Moderator", value: message.author.toString(), inline: false }
+                    { name: 'Reason', value: reason, inline: false },
+                    { name: 'Moderator', value: message.author.toString(), inline: false }
                 );
-
             await message.channel.send({ embeds: [embed] });
-        } catch (error) {
-            await message.reply(`Failed to mute member: ${error.message}`);
+        } catch (err) {
+            message.reply(`❌ Failed to mute: ${err.message}`);
         }
     }
-
+    
     // COMMAND 16: .channelsmake
-    else if (command === 'channelsmake') {
+    if (command === 'channelsmake') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            return message.reply("You need administrator permissions to use this command.");
+            return message.reply('❌ You need administrator permissions!');
         }
-
-        const guild = message.guild;
         let created = 0;
-
-        for (const categoryData of CHANNEL_STRUCTURE) {
-            // Create category
-            const category = await guild.channels.create({
-                name: categoryData.name,
-                type: ChannelType.GuildCategory
-            });
-
-            // Create channels in category
-            for (const channelName of categoryData.channels) {
-                try {
-                    const isVoice = channelName.includes('voice-chat') || channelName.includes('🔊');
-                    if (isVoice) {
-                        await guild.channels.create({
-                            name: channelName,
-                            type: ChannelType.GuildVoice,
-                            parent: category.id
-                        });
-                    } else {
-                        await guild.channels.create({
-                            name: channelName,
-                            type: ChannelType.GuildText,
-                            parent: category.id
-                        });
-                    }
-                    created++;
-                } catch (error) {
-                    console.error(`Failed to create channel ${channelName}:`, error);
+        for (const categoryData of CHANNELS) {
+            try {
+                const category = await guild.channels.create({
+                    name: categoryData.name,
+                    type: ChannelType.GuildCategory
+                });
+                for (const channelName of categoryData.channels) {
+                    try {
+                        if (channelName.includes('🔊') || channelName.includes('voice')) {
+                            await guild.channels.create({
+                                name: channelName,
+                                type: ChannelType.GuildVoice,
+                                parent: category.id
+                            });
+                        } else {
+                            await guild.channels.create({
+                                name: channelName,
+                                type: ChannelType.GuildText,
+                                parent: category.id
+                            });
+                        }
+                        created++;
+                    } catch (err) {}
                 }
-            }
+            } catch (err) {}
         }
-
         const embed = new EmbedBuilder()
-            .setTitle("✅ Channels Created")
-            .setDescription(`Successfully created all channels and categories.`)
+            .setTitle('✅ Channels Created')
+            .setDescription(`Created ${created} channels`)
             .setColor(0x00FF00);
-
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // COMMAND 17: .channelsdelete
-    else if (command === 'channelsdelete') {
+    if (command === 'channelsdelete') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            return message.reply("You need administrator permissions to use this command.");
+            return message.reply('❌ You need administrator permissions!');
         }
-
-        const guild = message.guild;
         let deleted = 0;
-
         for (const channel of guild.channels.cache.values()) {
             if (channel.id !== message.channel.id && channel.deletable) {
                 try {
                     await channel.delete();
                     deleted++;
-                } catch (error) {
-                    console.error(`Failed to delete channel ${channel.name}:`, error);
-                }
+                } catch (err) {}
             }
         }
-
         const embed = new EmbedBuilder()
-            .setTitle("🗑️ Channels Deleted")
-            .setDescription(`Successfully deleted ${deleted} channels.`)
+            .setTitle('🗑️ Channels Deleted')
+            .setDescription(`Deleted ${deleted} channels`)
             .setColor(0xFF0000);
-
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // VERIFICATION COMMANDS
-
+    
     // .Verify
-    else if (command === 'verify') {
+    if (command === 'verify') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-            return message.reply("You don't have permission to verify members!");
+            return message.reply('❌ You need manage roles permission!');
         }
-
         const member = message.mentions.members.first();
-        if (!member) return message.reply("Please mention a member to verify.");
-
-        const verificationNeeded = message.guild.roles.cache.find(r => r.name === "Verification Needed");
-        const verificationAccepted = message.guild.roles.cache.find(r => r.name === "Verification Accepted");
-        const partialMember = message.guild.roles.cache.find(r => r.name === "Partial Access Members");
-
+        if (!member) return message.reply('❌ Mention a member to verify!');
+        
+        const verificationNeeded = guild.roles.cache.find(r => r.name === 'Verification Needed');
+        const verificationAccepted = guild.roles.cache.find(r => r.name === 'Verification Accepted');
+        const partialMember = guild.roles.cache.find(r => r.name === 'Partial Access Members');
+        
         if (verificationNeeded && member.roles.cache.has(verificationNeeded.id)) {
             await member.roles.remove(verificationNeeded);
         }
-
-        if (verificationAccepted) {
-            await member.roles.add(verificationAccepted);
-        }
-
-        if (partialMember) {
-            await member.roles.add(partialMember);
-        }
-
+        if (verificationAccepted) await member.roles.add(verificationAccepted);
+        if (partialMember) await member.roles.add(partialMember);
+        
         const embed = new EmbedBuilder()
-            .setTitle("✅ Member Verified")
-            .setDescription(`${member} has been verified and given partial access.`)
+            .setTitle('✅ Member Verified')
+            .setDescription(`${member} verified with partial access`)
             .setColor(0x00FF00);
-
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // .Unverify
-    else if (command === 'unverify') {
+    if (command === 'unverify') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-            return message.reply("You don't have permission to unverify members!");
+            return message.reply('❌ You need manage roles permission!');
         }
-
         const member = message.mentions.members.first();
-        if (!member) return message.reply("Please mention a member to unverify.");
-
-        const verificationAccepted = message.guild.roles.cache.find(r => r.name === "Verification Accepted");
-        const partialMember = message.guild.roles.cache.find(r => r.name === "Partial Access Members");
-        const verificationNeeded = message.guild.roles.cache.find(r => r.name === "Verification Needed");
-
+        if (!member) return message.reply('❌ Mention a member to unverify!');
+        
+        const verificationAccepted = guild.roles.cache.find(r => r.name === 'Verification Accepted');
+        const partialMember = guild.roles.cache.find(r => r.name === 'Partial Access Members');
+        const verificationNeeded = guild.roles.cache.find(r => r.name === 'Verification Needed');
+        
         if (verificationAccepted && member.roles.cache.has(verificationAccepted.id)) {
             await member.roles.remove(verificationAccepted);
         }
-
         if (partialMember && member.roles.cache.has(partialMember.id)) {
             await member.roles.remove(partialMember);
         }
-
-        if (verificationNeeded) {
-            await member.roles.add(verificationNeeded);
-        }
-
+        if (verificationNeeded) await member.roles.add(verificationNeeded);
+        
         const embed = new EmbedBuilder()
-            .setTitle("🔄 Member Unverified")
-            .setDescription(`${member} has been unverified.`)
+            .setTitle('🔄 Member Unverified')
+            .setDescription(`${member} unverified`)
             .setColor(0xFFFF00);
-
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // .CheckAgreement
-    else if (command === 'checkagreement') {
+    if (command === 'checkagreement') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-            return message.reply("You don't have permission to check agreements!");
+            return message.reply('❌ You need manage roles permission!');
         }
-
         const member = message.mentions.members.first();
-        if (!member) return message.reply("Please mention a member to check.");
-
-        const agreementNeeded = message.guild.roles.cache.find(r => r.name === "Agreement Needed");
-        const agreementAccepted = message.guild.roles.cache.find(r => r.name === "Agreement Accepted");
-        const agreementDenied = message.guild.roles.cache.find(r => r.name === "Agreement Denied");
-
-        let status = "Unknown";
-        if (agreementNeeded && member.roles.cache.has(agreementNeeded.id)) {
-            status = "Agreement Needed";
-        } else if (agreementAccepted && member.roles.cache.has(agreementAccepted.id)) {
-            status = "Agreement Accepted";
-        } else if (agreementDenied && member.roles.cache.has(agreementDenied.id)) {
-            status = "Agreement Denied";
-        }
-
+        if (!member) return message.reply('❌ Mention a member to check!');
+        
+        const agreementNeeded = guild.roles.cache.find(r => r.name === 'Agreement Needed');
+        const agreementAccepted = guild.roles.cache.find(r => r.name === 'Agreement Accepted');
+        const agreementDenied = guild.roles.cache.find(r => r.name === 'Agreement Denied');
+        
+        let status = 'Unknown';
+        if (agreementNeeded && member.roles.cache.has(agreementNeeded.id)) status = 'Agreement Needed';
+        else if (agreementAccepted && member.roles.cache.has(agreementAccepted.id)) status = 'Agreement Accepted';
+        else if (agreementDenied && member.roles.cache.has(agreementDenied.id)) status = 'Agreement Denied';
+        
         const embed = new EmbedBuilder()
-            .setTitle("📋 Agreement Status")
-            .setDescription(`${member}'s agreement status: **${status}**`)
+            .setTitle('📋 Agreement Status')
+            .setDescription(`${member}'s status: **${status}**`)
             .setColor(0x3498db);
-
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // .AllowAgreement
-    else if (command === 'allowagreement') {
+    if (command === 'allowagreement') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-            return message.reply("You don't have permission to accept agreements!");
+            return message.reply('❌ You need manage roles permission!');
         }
-
         const member = message.mentions.members.first();
-        if (!member) return message.reply("Please mention a member.");
-
-        const agreementNeeded = message.guild.roles.cache.find(r => r.name === "Agreement Needed");
-        const agreementAccepted = message.guild.roles.cache.find(r => r.name === "Agreement Accepted");
-        const acceptedRole = message.guild.roles.cache.find(r => r.name === "Accepted");
-
+        if (!member) return message.reply('❌ Mention a member!');
+        
+        const agreementNeeded = guild.roles.cache.find(r => r.name === 'Agreement Needed');
+        const agreementAccepted = guild.roles.cache.find(r => r.name === 'Agreement Accepted');
+        const acceptedRole = guild.roles.cache.find(r => r.name === 'Accepted');
+        
         if (agreementNeeded && member.roles.cache.has(agreementNeeded.id)) {
             await member.roles.remove(agreementNeeded);
         }
-
-        if (agreementAccepted) {
-            await member.roles.add(agreementAccepted);
-        }
-
-        if (acceptedRole) {
-            await member.roles.add(acceptedRole);
-        }
-
+        if (agreementAccepted) await member.roles.add(agreementAccepted);
+        if (acceptedRole) await member.roles.add(acceptedRole);
+        
         const embed = new EmbedBuilder()
-            .setTitle("✅ Agreement Accepted")
-            .setDescription(`${member}'s agreement has been accepted.`)
+            .setTitle('✅ Agreement Accepted')
+            .setDescription(`${member}'s agreement accepted`)
             .setColor(0x00FF00);
-
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // .AllowAccess
-    else if (command === 'allowaccess') {
+    if (command === 'allowaccess') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-            return message.reply("You don't have permission to grant access!");
+            return message.reply('❌ You need manage roles permission!');
         }
-
         const member = message.mentions.members.first();
-        if (!member) return message.reply("Please mention a member to grant access to.");
-
-        const accessRoles = [
-            "Members",
-            "Training Access",
-            "Misc Access",
-            "Evaluation Access",
-            "Information Access"
-        ];
-
+        if (!member) return message.reply('❌ Mention a member!');
+        
+        const accessRoles = ['Members', 'Training Access', 'Misc Access', 'Evaluation Access', 'Information Access'];
         const rolesToAdd = [];
         for (const roleName of accessRoles) {
-            const role = message.guild.roles.cache.find(r => r.name === roleName);
+            const role = guild.roles.cache.find(r => r.name === roleName);
             if (role) rolesToAdd.push(role);
         }
-
         if (rolesToAdd.length > 0) {
             await member.roles.add(rolesToAdd);
         }
-
+        
         const embed = new EmbedBuilder()
-            .setTitle("✅ Full Access Granted")
-            .setDescription(`${member} has been granted full access to the server.`)
+            .setTitle('✅ Full Access Granted')
+            .setDescription(`${member} granted full access`)
             .setColor(0x00FF00);
-
         await message.channel.send({ embeds: [embed] });
     }
-
+    
     // .RemoveAccess
-    else if (command === 'removeaccess') {
+    if (command === 'removeaccess') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-            return message.reply("You don't have permission to remove access!");
+            return message.reply('❌ You need manage roles permission!');
         }
-
         const member = message.mentions.members.first();
-        if (!member) return message.reply("Please mention a member to remove access from.");
-
-        const accessRemovedRole = message.guild.roles.cache.find(r => r.name === "Access Removed");
+        if (!member) return message.reply('❌ Mention a member!');
         
-        // Remove all roles except @everyone
-        const rolesToRemove = member.roles.cache.filter(role => role.name !== '@everyone');
-        
+        const rolesToRemove = member.roles.cache.filter(r => r.name !== '@everyone');
         if (rolesToRemove.size > 0) {
             await member.roles.remove(rolesToRemove);
         }
-
-        if (accessRemovedRole) {
-            await member.roles.add(accessRemovedRole);
+        
+        const accessRemoved = guild.roles.cache.find(r => r.name === 'Access Removed');
+        if (accessRemoved) {
+            await member.roles.add(accessRemoved);
         }
-
+        
         const embed = new EmbedBuilder()
-            .setTitle("🚫 Access Removed")
-            .setDescription(`All roles removed from ${member} and Access Removed role assigned.`)
+            .setTitle('🚫 Access Removed')
+            .setDescription(`${member}'s access removed`)
             .setColor(0xFF0000);
-
         await message.channel.send({ embeds: [embed] });
     }
 });
 
-// Slash commands handler
-client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-
+// SLASH COMMANDS HANDLER
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isCommand()) return;
+    
     const { commandName, options } = interaction;
-
+    const guild = interaction.guild;
+    
     if (commandName === 'rolelist') {
-        const guild = interaction.guild;
-        const rankingMentions = [];
-        
-        for (const roleName of RANKING_ROLES) {
-            const role = guild.roles.cache.find(r => r.name === roleName);
-            if (role) rankingMentions.push(role.toString());
-        }
-
+        const roles = guild.roles.cache.filter(r => RANKING_ROLES.includes(r.name));
         const embed = new EmbedBuilder()
-            .setTitle("📊 Ranking Roles List")
-            .setDescription("Here are all the ranking roles in the server:")
+            .setTitle('📊 Ranking Roles')
+            .setDescription('All ranking roles:')
             .setColor(0x3498db);
-
-        const chunks = [];
-        for (let i = 0; i < rankingMentions.length; i += 20) {
-            chunks.push(rankingMentions.slice(i, i + 20));
-        }
-
-        chunks.forEach((chunk, index) => {
-            embed.addFields({
-                name: `Rankings Part ${index + 1}`,
-                value: chunk.join('\n') || "No roles found",
-                inline: false
-            });
-        });
-
+        
+        const roleList = roles.map(r => r.toString()).join('\n') || 'No ranking roles';
+        embed.addFields({ name: 'Roles', value: roleList.substring(0, 1024) });
         await interaction.reply({ embeds: [embed] });
     }
-
-    else if (commandName === 'roleinfo') {
+    
+    if (commandName === 'roleinfo') {
         const embed = new EmbedBuilder()
-            .setTitle("ℹ️ Role Information")
-            .setDescription("Explanation of all ranking levels:")
+            .setTitle('ℹ️ Role Information')
+            .setDescription('Ranking system explanation')
             .setColor(0x2ecc71)
             .addFields(
-                { name: "Observer I-III", value: "Beginner levels - Learning the basics", inline: false },
-                { name: "Initiate I-III", value: "Starting to participate actively", inline: false },
-                { name: "Novitiate I-III", value: "Developing fundamental skills", inline: false },
-                { name: "Apprentice I-III", value: "Under guidance, building competence", inline: false },
-                { name: "Intermediate I-III", value: "Solid foundation, consistent performance", inline: false },
-                { name: "Practitioner I-III", value: "Applying skills effectively", inline: false },
-                { name: "Proficient I-III", value: "Highly skilled, reliable performer", inline: false },
-                { name: "Advanced I-III", value: "Expert level with deep knowledge", inline: false },
-                { name: "Experienced I-III", value: "Seasoned veteran with extensive experience", inline: false },
-                { name: "Advanced Practitioner I-III", value: "Mastering complex techniques", inline: false },
-                { name: "Ascendant I-III", value: "Rising to elite status", inline: false },
-                { name: "Transcendent I-III", value: "Beyond conventional mastery", inline: false },
-                { name: "Luminary I-III", value: "Guiding light for others", inline: false },
-                { name: "Prime Levels", value: "Peak performance in each tier", inline: false },
-                { name: "Eternal Levels", value: "Legendary status, enduring excellence", inline: false },
-                { name: "Omniscient/Nexithal/Zethithal", value: "Ultimate mastery and leadership", inline: false }
+                { name: 'Beginner Levels', value: 'Observer to Apprentice', inline: false },
+                { name: 'Intermediate Levels', value: 'Intermediate to Proficient', inline: false },
+                { name: 'Advanced Levels', value: 'Advanced to Experienced', inline: false },
+                { name: 'Master Levels', value: 'Advanced Practitioner to Luminary', inline: false },
+                { name: 'Elite Levels', value: 'Prime and Eternal tiers', inline: false }
             );
-
         await interaction.reply({ embeds: [embed] });
     }
-
-    else if (commandName === 'claninfo') {
+    
+    if (commandName === 'claninfo') {
         const embed = new EmbedBuilder()
-            .setTitle("🏰 Clan Information")
-            .setDescription("Welcome to our community!")
+            .setTitle('🏰 Clan Information')
+            .setDescription('Our community information')
             .setColor(0xf1c40f)
             .addFields(
-                { name: "Who We Are", value: "We are a dedicated group of individuals focused on growth, teamwork, and excellence. Our community values respect, collaboration, and continuous improvement.", inline: false },
-                { name: "Our Mission", value: "To create a supportive environment where members can develop their skills, form lasting connections, and achieve their goals together.", inline: false },
-                { name: "Community Values", value: "• Respect for all members\n• Teamwork and collaboration\n• Continuous learning\n• Positive attitude\n• Active participation", inline: false },
-                { name: "How to Get Started", value: "1. Read the rules in #rules\n2. Complete verification in #verification-request\n3. Agree to our community guidelines\n4. Start participating in discussions and events!", inline: false }
+                { name: 'About Us', value: 'Focused on growth, teamwork, and excellence.', inline: false },
+                { name: 'Get Started', value: 'Read rules → Verify → Participate', inline: false }
             );
-
         await interaction.reply({ embeds: [embed] });
     }
-
-    else if (commandName === 'rules') {
+    
+    if (commandName === 'rules') {
         const embed = new EmbedBuilder()
-            .setTitle("📜 Server Rules")
-            .setDescription("Please read and follow these rules to maintain a positive community:")
+            .setTitle('📜 Server Rules')
+            .setDescription('Basic rules to follow:')
             .setColor(0xFF0000)
             .addFields(
-                { name: "Rule 1: Respect", value: "Treat all members with respect. No harassment, hate speech, or discrimination.", inline: false },
-                { name: "Rule 2: No Spamming", value: "Do not spam channels with excessive messages, mentions, or content.", inline: false },
-                { name: "Rule 3: Appropriate Content", value: "Keep all content appropriate for all ages. No NSFW content.", inline: false },
-                { name: "Rule 4: No Advertising", value: "No unsolicited advertising or self-promotion without permission.", inline: false },
-                { name: "Rule 5: Follow Discord TOS", value: "You must follow Discord's Terms of Service at all times.", inline: false },
-                { name: "Rule 6: Use Proper Channels", value: "Post content in the appropriate channels only.", inline: false },
-                { name: "Rule 7: Listen to Staff", value: "Follow instructions from staff members and moderators.", inline: false },
-                { name: "Rule 8: No Drama", value: "Keep personal conflicts out of the server. Handle issues privately.", inline: false },
-                { name: "Rule 9: English Only", value: "Use English in public channels for moderation purposes.", inline: false },
-                { name: "Rule 10: Have Fun!", value: "This is a community - be friendly and enjoy your time here!", inline: false }
+                { name: 'Respect Everyone', value: 'No harassment or hate speech.', inline: false },
+                { name: 'No Spamming', value: 'Keep messages reasonable.', inline: false },
+                { name: 'Appropriate Content', value: 'Keep it family friendly.', inline: false },
+                { name: 'Have Fun!', value: 'Enjoy your time here!', inline: false }
             );
-
         await interaction.reply({ embeds: [embed] });
     }
-
-    else if (commandName === 'kick') {
+    
+    if (commandName === 'kick') {
         if (!interaction.memberPermissions.has(PermissionsBitField.Flags.KickMembers)) {
-            return interaction.reply({ content: "You don't have permission to kick members!", ephemeral: true });
+            return interaction.reply({ content: '❌ No permission!', ephemeral: true });
         }
-
         const member = options.getMember('member');
-        const reason = options.getString('reason') || "No reason provided";
-
+        const reason = options.getString('reason') || 'No reason';
         try {
             await member.kick(reason);
             const embed = new EmbedBuilder()
-                .setTitle("👢 Member Kicked")
-                .setDescription(`${member} has been kicked.`)
+                .setTitle('👢 Member Kicked')
+                .setDescription(`${member} was kicked`)
                 .setColor(0xFFA500)
                 .addFields(
-                    { name: "Reason", value: reason, inline: false },
-                    { name: "Moderator", value: interaction.user.toString(), inline: false }
+                    { name: 'Reason', value: reason, inline: false },
+                    { name: 'Moderator', value: interaction.user.toString(), inline: false }
                 );
-
             await interaction.reply({ embeds: [embed] });
-        } catch (error) {
-            await interaction.reply({ content: `Failed to kick member: ${error.message}`, ephemeral: true });
+        } catch (err) {
+            interaction.reply({ content: `❌ Failed: ${err.message}`, ephemeral: true });
         }
     }
-
-    else if (commandName === 'ban') {
+    
+    if (commandName === 'ban') {
         if (!interaction.memberPermissions.has(PermissionsBitField.Flags.BanMembers)) {
-            return interaction.reply({ content: "You don't have permission to ban members!", ephemeral: true });
+            return interaction.reply({ content: '❌ No permission!', ephemeral: true });
         }
-
         const member = options.getMember('member');
-        const reason = options.getString('reason') || "No reason provided";
-
+        const reason = options.getString('reason') || 'No reason';
         try {
             await member.ban({ reason });
             const embed = new EmbedBuilder()
-                .setTitle("🔨 Member Banned")
-                .setDescription(`${member} has been banned.`)
+                .setTitle('🔨 Member Banned')
+                .setDescription(`${member} was banned`)
                 .setColor(0xFF0000)
                 .addFields(
-                    { name: "Reason", value: reason, inline: false },
-                    { name: "Moderator", value: interaction.user.toString(), inline: false }
+                    { name: 'Reason', value: reason, inline: false },
+                    { name: 'Moderator', value: interaction.user.toString(), inline: false }
                 );
-
             await interaction.reply({ embeds: [embed] });
-        } catch (error) {
-            await interaction.reply({ content: `Failed to ban member: ${error.message}`, ephemeral: true });
+        } catch (err) {
+            interaction.reply({ content: `❌ Failed: ${err.message}`, ephemeral: true });
         }
     }
-
-    else if (commandName === 'mute') {
+    
+    if (commandName === 'mute') {
         if (!interaction.memberPermissions.has(PermissionsBitField.Flags.ManageRoles)) {
-            return interaction.reply({ content: "You don't have permission to mute members!", ephemeral: true });
+            return interaction.reply({ content: '❌ No permission!', ephemeral: true });
         }
-
         const member = options.getMember('member');
-        const reason = options.getString('reason') || "No reason provided";
-        const guild = interaction.guild;
-
-        let mutedRole = guild.roles.cache.find(r => r.name === "Muted");
-        if (!mutedRole) {
+        const reason = options.getString('reason') || 'No reason';
+        
+        let muteRole = guild.roles.cache.find(r => r.name === 'Muted');
+        if (!muteRole) {
             try {
-                mutedRole = await guild.roles.create({
-                    name: "Muted",
-                    color: "#95a5a6",
+                muteRole = await guild.roles.create({
+                    name: 'Muted',
+                    color: '#95a5a6',
                     permissions: [],
-                    reason: 'Muted role for moderation'
+                    reason: 'Mute role'
                 });
-            } catch (error) {
-                return interaction.reply({ content: `Failed to create muted role: ${error.message}`, ephemeral: true });
+            } catch (err) {
+                return interaction.reply({ content: `❌ Failed to create role: ${err.message}`, ephemeral: true });
             }
         }
-
+        
         try {
-            await member.roles.add(mutedRole);
+            await member.roles.add(muteRole);
             const embed = new EmbedBuilder()
-                .setTitle("🔇 Member Muted")
-                .setDescription(`${member} has been muted.`)
+                .setTitle('🔇 Member Muted')
+                .setDescription(`${member} was muted`)
                 .setColor(0x95a5a6)
                 .addFields(
-                    { name: "Reason", value: reason, inline: false },
-                    { name: "Moderator", value: interaction.user.toString(), inline: false }
+                    { name: 'Reason', value: reason, inline: false },
+                    { name: 'Moderator', value: interaction.user.toString(), inline: false }
                 );
-
             await interaction.reply({ embeds: [embed] });
-        } catch (error) {
-            await interaction.reply({ content: `Failed to mute member: ${error.message}`, ephemeral: true });
+        } catch (err) {
+            interaction.reply({ content: `❌ Failed: ${err.message}`, ephemeral: true });
         }
     }
 });
 
-// Error handling
+// ERROR HANDLING
 client.on('error', console.error);
+process.on('unhandledRejection', console.error);
 
-// Login
-client.login(TOKEN);
+// LOGIN
+client.login(TOKEN).catch(err => {
+    console.error('❌ LOGIN FAILED!');
+    console.error('❌ Error:', err.message);
+    console.error('❌ Token present:', !!TOKEN);
+    if (TOKEN) {
+        console.error('❌ Token starts with:', TOKEN.substring(0, 5) + '...');
+        console.error('❌ Token length:', TOKEN.length);
+    }
+    process.exit(1);
+});
