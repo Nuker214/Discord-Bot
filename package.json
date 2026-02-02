@@ -1,12 +1,32 @@
 {
-  "name": "tsvm-bot",
+  "name": "discord-bot",
   "version": "1.0.0",
+  "description": "Complete Discord bot with all features including role management, channel setup, and moderation commands",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "node index.js",
+    "test": "echo \"No tests specified\" && exit 0"
   },
+  "keywords": [
+    "discord",
+    "bot",
+    "moderation",
+    "roles",
+    "channels",
+    "automation"
+  ],
+  "author": "System",
+  "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.12.0",
-    "express": "^4.18.2"
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nuker214/Discord-Bot/edit/main/package.json"
   }
 }
