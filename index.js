@@ -1,11 +1,9 @@
-const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ChannelType, REST, Routes, ActivityType } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ChannelType, REST, Routes, ActivityType, Colors } = require('discord.js');
 
-// GET TOKEN FROM RENDER ENVIRONMENT
 const TOKEN = process.env.DISCORD_TOKEN;
 const GUILD_ID = process.env.GUILD_ID;
 const CLIENT_ID = process.env.CLIENT_ID;
 
-// BOT SETUP
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -14,19 +12,67 @@ const client = new Client({
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.GuildPresences
+        GatewayIntentBits.GuildPresences,
+        GatewayIntentBits.GuildMessageTyping,
+        GatewayIntentBits.GuildInvites
     ]
 });
 
-// GLOBAL STORAGE
 let welcomeChannel = null;
 let leaveChannel = null;
 const prefix = '.';
+let commandLogs = [];
+const startTime = new Date();
 
-// CUSTOM FONT FUNCTION (Better Discord Font)
+class Logger {
+    static log(type, message, data = null) {
+        const timestamp = new Date().toISOString();
+        const logEntry = `[${timestamp}] [${type}] ${message}`;
+        
+        console.log(logEntry);
+        if (data) console.log(JSON.stringify(data, null, 2));
+        
+        commandLogs.push({ timestamp, type, message, data });
+        if (commandLogs.length > 1000) commandLogs.shift();
+        
+        const colors = {
+            'INFO': '\x1b[36m',
+            'SUCCESS': '\x1b[32m',
+            'WARNING': '\x1b[33m',
+            'ERROR': '\x1b[31m',
+            'COMMAND': '\x1b[35m',
+            'SYSTEM': '\x1b[34m',
+            'DEBUG': '\x1b[90m',
+            'MEMORY': '\x1b[93m',
+            'NETWORK': '\x1b[95m'
+        };
+        
+        const color = colors[type] || '\x1b[0m';
+        const reset = '\x1b[0m';
+        
+        console.log(`${color}${logEntry}${reset}`);
+    }
+    
+    static getStats() {
+        const now = new Date();
+        const uptime = now - startTime;
+        const hours = Math.floor(uptime / 3600000);
+        const minutes = Math.floor((uptime % 3600000) / 60000);
+        const seconds = Math.floor((uptime % 60000) / 1000);
+        
+        return {
+            uptime: `${hours}h ${minutes}m ${seconds}s`,
+            startTime: startTime.toISOString(),
+            totalCommands: commandLogs.filter(log => log.type === 'COMMAND').length,
+            totalErrors: commandLogs.filter(log => log.type === 'ERROR').length,
+            memoryUsage: process.memoryUsage(),
+            commandHistory: commandLogs.slice(-10)
+        };
+    }
+}
+
 function applyCustomFont(text) {
     const fontMap = {
-        // Small caps style - cleaner for Discord
         'A': 'ᴀ', 'B': 'ʙ', 'C': 'ᴄ', 'D': 'ᴅ', 'E': 'ᴇ', 'F': 'ꜰ', 'G': 'ɢ', 'H': 'ʜ', 'I': 'ɪ', 'J': 'ᴊ', 'K': 'ᴋ', 'L': 'ʟ', 'M': 'ᴍ',
         'N': 'ɴ', 'O': 'ᴏ', 'P': 'ᴘ', 'Q': 'ǫ', 'R': 'ʀ', 'S': 'ꜱ', 'T': 'ᴛ', 'U': 'ᴜ', 'V': 'ᴠ', 'W': 'ᴡ', 'X': 'x', 'Y': 'ʏ', 'Z': 'ᴢ',
         'a': 'ᴀ', 'b': 'ʙ', 'c': 'ᴄ', 'd': 'ᴅ', 'e': 'ᴇ', 'f': 'ꜰ', 'g': 'ɢ', 'h': 'ʜ', 'i': 'ɪ', 'j': 'ᴊ', 'k': 'ᴋ', 'l': 'ʟ', 'm': 'ᴍ',
@@ -37,7 +83,6 @@ function applyCustomFont(text) {
     return text.split('').map(char => fontMap[char] || char).join('');
 }
 
-// Generate gradient colors from start to end
 function generateGradientColors(startColor, endColor, steps) {
     const colors = [];
     const start = parseInt(startColor.slice(1), 16);
@@ -64,76 +109,48 @@ function generateGradientColors(startColor, endColor, steps) {
     return colors;
 }
 
-// RANKING ROLES WITH SMOOTH GRADIENT FROM YELLOW TO RED
-const GRADIENT_COLORS = generateGradientColors("#FFFF00", "#FF0000", 22); // Yellow to Red gradient
+const GRADIENT_COLORS = generateGradientColors("#FFFF00", "#FF0000", 22);
 
 const RANKING_ROLES = [
-    // Observer Series - Light Yellow
     { name: applyCustomFont("Observer I"), color: GRADIENT_COLORS[0] },
     { name: applyCustomFont("Observer II"), color: GRADIENT_COLORS[0] },
     { name: applyCustomFont("Observer III"), color: GRADIENT_COLORS[0] },
-    
-    // Initiate Series - Yellow
     { name: applyCustomFont("Initiate I"), color: GRADIENT_COLORS[2] },
     { name: applyCustomFont("Initiate II"), color: GRADIENT_COLORS[2] },
     { name: applyCustomFont("Initiate III"), color: GRADIENT_COLORS[2] },
-    
-    // Novitiate Series
     { name: applyCustomFont("Novitiate I"), color: GRADIENT_COLORS[4] },
     { name: applyCustomFont("Novitiate II"), color: GRADIENT_COLORS[4] },
     { name: applyCustomFont("Novitiate III"), color: GRADIENT_COLORS[4] },
-    
-    // Apprentice Series
     { name: applyCustomFont("Apprentice I"), color: GRADIENT_COLORS[6] },
     { name: applyCustomFont("Apprentice II"), color: GRADIENT_COLORS[6] },
     { name: applyCustomFont("Apprentice III"), color: GRADIENT_COLORS[6] },
-    
-    // Intermediate Series
     { name: applyCustomFont("Intermediate I"), color: GRADIENT_COLORS[8] },
     { name: applyCustomFont("Intermediate II"), color: GRADIENT_COLORS[8] },
     { name: applyCustomFont("Intermediate III"), color: GRADIENT_COLORS[8] },
-    
-    // Practitioner Series
     { name: applyCustomFont("Practitioner I"), color: GRADIENT_COLORS[10] },
     { name: applyCustomFont("Practitioner II"), color: GRADIENT_COLORS[10] },
     { name: applyCustomFont("Practitioner III"), color: GRADIENT_COLORS[10] },
-    
-    // Proficient Series
     { name: applyCustomFont("Proficient I"), color: GRADIENT_COLORS[12] },
     { name: applyCustomFont("Proficient II"), color: GRADIENT_COLORS[12] },
     { name: applyCustomFont("Proficient III"), color: GRADIENT_COLORS[12] },
-    
-    // Advanced Series
     { name: applyCustomFont("Advanced I"), color: GRADIENT_COLORS[14] },
     { name: applyCustomFont("Advanced II"), color: GRADIENT_COLORS[14] },
     { name: applyCustomFont("Advanced III"), color: GRADIENT_COLORS[14] },
-    
-    // Experienced Series
     { name: applyCustomFont("Experienced I"), color: GRADIENT_COLORS[16] },
     { name: applyCustomFont("Experienced II"), color: GRADIENT_COLORS[16] },
     { name: applyCustomFont("Experienced III"), color: GRADIENT_COLORS[16] },
-    
-    // Advanced Practitioner Series
     { name: applyCustomFont("Advanced Practitioner I"), color: GRADIENT_COLORS[17] },
     { name: applyCustomFont("Advanced Practitioner II"), color: GRADIENT_COLORS[17] },
     { name: applyCustomFont("Advanced Practitioner III"), color: GRADIENT_COLORS[17] },
-    
-    // Ascendant Series
     { name: applyCustomFont("Ascendant I"), color: GRADIENT_COLORS[18] },
     { name: applyCustomFont("Ascendant II"), color: GRADIENT_COLORS[18] },
     { name: applyCustomFont("Ascendant III"), color: GRADIENT_COLORS[18] },
-    
-    // Transcendent Series
     { name: applyCustomFont("Transcendent I"), color: GRADIENT_COLORS[19] },
     { name: applyCustomFont("Transcendent II"), color: GRADIENT_COLORS[19] },
     { name: applyCustomFont("Transcendent III"), color: GRADIENT_COLORS[19] },
-    
-    // Luminary Series
     { name: applyCustomFont("Luminary I"), color: GRADIENT_COLORS[20] },
     { name: applyCustomFont("Luminary II"), color: GRADIENT_COLORS[20] },
     { name: applyCustomFont("Luminary III"), color: GRADIENT_COLORS[20] },
-    
-    // Prime Series - Dark Red
     { name: applyCustomFont("Ascendant Prime I"), color: GRADIENT_COLORS[21] },
     { name: applyCustomFont("Ascendant Prime II"), color: GRADIENT_COLORS[21] },
     { name: applyCustomFont("Ascendant Prime III"), color: GRADIENT_COLORS[21] },
@@ -143,8 +160,6 @@ const RANKING_ROLES = [
     { name: applyCustomFont("Luminary Prime I"), color: "#660000" },
     { name: applyCustomFont("Luminary Prime II"), color: "#660000" },
     { name: applyCustomFont("Luminary Prime III"), color: "#660000" },
-    
-    // Eternal Series - Darker Red
     { name: applyCustomFont("Luminary Eternal I"), color: "#330000" },
     { name: applyCustomFont("Luminary Eternal II"), color: "#330000" },
     { name: applyCustomFont("Luminary Eternal III"), color: "#330000" },
@@ -154,8 +169,6 @@ const RANKING_ROLES = [
     { name: applyCustomFont("Transcendent Eternal I"), color: "#000000" },
     { name: applyCustomFont("Transcendent Eternal II"), color: "#000000" },
     { name: applyCustomFont("Transcendent Eternal III"), color: "#000000" },
-    
-    // Ultimate Series - Black
     { name: applyCustomFont("Omniscient I"), color: "#000000" },
     { name: applyCustomFont("Omniscient II"), color: "#000000" },
     { name: applyCustomFont("Omniscient III"), color: "#000000" },
@@ -167,7 +180,58 @@ const RANKING_ROLES = [
     { name: applyCustomFont("Zethithal III"), color: "#000000" }
 ];
 
-// CHANNEL STRUCTURE WITH CUSTOM FONT
+const ALL_ROLES = [
+    { name: applyCustomFont("Partial Access Members"), color: "#1E90FF" },
+    { name: applyCustomFont("Partial Access Allies"), color: "#4169E1" },
+    { name: applyCustomFont("Partial Access Training"), color: "#6495ED" },
+    { name: applyCustomFont("Partial Access Misc"), color: "#4682B4" },
+    { name: applyCustomFont("Partial Access Information"), color: "#5F9EA0" },
+    { name: applyCustomFont("Members"), color: "#32CD32" },
+    { name: applyCustomFont("Allies"), color: "#228B22" },
+    { name: applyCustomFont("Rank Evaluators"), color: "#006400" },
+    { name: applyCustomFont("Rank Approvals"), color: "#008000" },
+    { name: applyCustomFont("Training Access"), color: "#7CFC00" },
+    { name: applyCustomFont("Allies Access"), color: "#00FF00" },
+    { name: applyCustomFont("Misc Access"), color: "#90EE90" },
+    { name: applyCustomFont("Information Access"), color: "#98FB98" },
+    { name: applyCustomFont("Announcements Access"), color: "#00FA9A" },
+    { name: applyCustomFont("Events Access"), color: "#00FF7F" },
+    { name: applyCustomFont("Target List Access"), color: "#2E8B57" },
+    { name: applyCustomFont("Enemies"), color: "#FF0000" },
+    { name: applyCustomFont("Traitor"), color: "#8B0000" },
+    { name: applyCustomFont("Trusted"), color: "#9370DB" },
+    { name: applyCustomFont("Friends"), color: "#8A2BE2" },
+    { name: applyCustomFont("Emojis Permissions"), color: "#FFD700" },
+    { name: applyCustomFont("Stickers Permissions"), color: "#FFA500" },
+    { name: applyCustomFont("Gifs Permissions"), color: "#FF8C00" },
+    { name: applyCustomFont("Image Permissions"), color: "#FF6347" },
+    { name: applyCustomFont("Slowmode Bypass"), color: "#FF4500" },
+    { name: applyCustomFont("Leader"), color: "#DC143C" },
+    { name: applyCustomFont("Leader Assistant"), color: "#B22222" },
+    { name: applyCustomFont("Council Leader"), color: "#8B008B" },
+    { name: applyCustomFont("Council Assistant"), color: "#9932CC" },
+    { name: applyCustomFont("Council Of Security"), color: "#9400D3" },
+    { name: applyCustomFont("Council Of Strategy"), color: "#8A2BE2" },
+    { name: applyCustomFont("Council Of Training"), color: "#9370DB" },
+    { name: applyCustomFont("Council Of Creation"), color: "#BA55D3" },
+    { name: applyCustomFont("Right Hand"), color: "#DA70D6" },
+    { name: applyCustomFont("Left Hand"), color: "#EE82EE" },
+    { name: applyCustomFont("Messager"), color: "#DDA0DD" },
+    { name: applyCustomFont("Bots"), color: "#2F4F4F" },
+    { name: applyCustomFont("Scripter"), color: "#FF8C00" },
+    { name: applyCustomFont("Coder"), color: "#FF7F50" },
+    { name: applyCustomFont("Evaluation Access"), color: "#FF6347" },
+    { name: applyCustomFont("Evaluation Needed"), color: "#FFD700" },
+    { name: applyCustomFont("Verification Needed"), color: "#FFA500" },
+    { name: applyCustomFont("Agreement Needed"), color: "#FF8C00" },
+    { name: applyCustomFont("Verification Accepted"), color: "#32CD32" },
+    { name: applyCustomFont("Agreement Accepted"), color: "#228B22" },
+    { name: applyCustomFont("Agreement Denied"), color: "#FF0000" },
+    { name: applyCustomFont("Been Evaluated"), color: "#1E90FF" },
+    { name: applyCustomFont("Accepted"), color: "#00FF00" },
+    { name: applyCustomFont("Access Removed"), color: "#8B0000" }
+];
+
 const CHANNEL_STRUCTURE = [
     {
         name: "📁 " + applyCustomFont("Uncategorized"),
@@ -248,157 +312,84 @@ const CHANNEL_STRUCTURE = [
     }
 ];
 
-// ALL ROLES TO CREATE WITH CUSTOM FONT AND GRADIENT COLORS
-const ALL_ROLES = [
-    // Partial Access - Blue Gradient
-    { name: applyCustomFont("Partial Access Members"), color: "#1E90FF" },
-    { name: applyCustomFont("Partial Access Allies"), color: "#4169E1" },
-    { name: applyCustomFont("Partial Access Training"), color: "#6495ED" },
-    { name: applyCustomFont("Partial Access Misc"), color: "#4682B4" },
-    { name: applyCustomFont("Partial Access Information"), color: "#5F9EA0" },
-    
-    // Access Roles - Green Gradient
-    { name: applyCustomFont("Members"), color: "#32CD32" },
-    { name: applyCustomFont("Allies"), color: "#228B22" },
-    { name: applyCustomFont("Rank Evaluators"), color: "#006400" },
-    { name: applyCustomFont("Rank Approvals"), color: "#008000" },
-    { name: applyCustomFont("Training Access"), color: "#7CFC00" },
-    { name: applyCustomFont("Allies Access"), color: "#00FF00" },
-    { name: applyCustomFont("Misc Access"), color: "#90EE90" },
-    { name: applyCustomFont("Information Access"), color: "#98FB98" },
-    { name: applyCustomFont("Announcements Access"), color: "#00FA9A" },
-    { name: applyCustomFont("Events Access"), color: "#00FF7F" },
-    { name: applyCustomFont("Target List Access"), color: "#2E8B57" },
-    
-    // Status Roles
-    { name: applyCustomFont("Enemies"), color: "#FF0000" },
-    { name: applyCustomFont("Traitor"), color: "#8B0000" },
-    { name: applyCustomFont("Trusted"), color: "#9370DB" },
-    { name: applyCustomFont("Friends"), color: "#8A2BE2" },
-    { name: applyCustomFont("Emojis Permissions"), color: "#FFD700" },
-    { name: applyCustomFont("Stickers Permissions"), color: "#FFA500" },
-    { name: applyCustomFont("Gifs Permissions"), color: "#FF8C00" },
-    { name: applyCustomFont("Image Permissions"), color: "#FF6347" },
-    { name: applyCustomFont("Slowmode Bypass"), color: "#FF4500" },
-    
-    // Leadership
-    { name: applyCustomFont("Leader"), color: "#DC143C" },
-    { name: applyCustomFont("Leader Assistant"), color: "#B22222" },
-    { name: applyCustomFont("Council Leader"), color: "#8B008B" },
-    { name: applyCustomFont("Council Assistant"), color: "#9932CC" },
-    { name: applyCustomFont("Council Of Security"), color: "#9400D3" },
-    { name: applyCustomFont("Council Of Strategy"), color: "#8A2BE2" },
-    { name: applyCustomFont("Council Of Training"), color: "#9370DB" },
-    { name: applyCustomFont("Council Of Creation"), color: "#BA55D3" },
-    { name: applyCustomFont("Right Hand"), color: "#DA70D6" },
-    { name: applyCustomFont("Left Hand"), color: "#EE82EE" },
-    { name: applyCustomFont("Messager"), color: "#DDA0DD" },
-    
-    // Special
-    { name: applyCustomFont("Bots"), color: "#2F4F4F" },
-    { name: applyCustomFont("Scripter"), color: "#FF8C00" },
-    { name: applyCustomFont("Coder"), color: "#FF7F50" },
-    { name: applyCustomFont("Evaluation Access"), color: "#FF6347" },
-    
-    // VERIFICATION ROLES (Will be auto-assigned)
-    { name: applyCustomFont("Evaluation Needed"), color: "#FFD700" },
-    { name: applyCustomFont("Verification Needed"), color: "#FFA500" },
-    { name: applyCustomFont("Agreement Needed"), color: "#FF8C00" },
-    { name: applyCustomFont("Verification Accepted"), color: "#32CD32" },
-    { name: applyCustomFont("Agreement Accepted"), color: "#228B22" },
-    { name: applyCustomFont("Agreement Denied"), color: "#FF0000" },
-    { name: applyCustomFont("Been Evaluated"), color: "#1E90FF" },
-    { name: applyCustomFont("Accepted"), color: "#00FF00" },
-    { name: applyCustomFont("Access Removed"), color: "#8B0000" }
-];
-
-// BOT READY EVENT WITH RICH PRESENCE
 client.once('ready', async () => {
-    console.log(`╔══════════════════════════════════════════════════════════╗`);
-    console.log(`║  🚀 Bot Online: ${client.user.tag}`);
-    console.log(`║  📊 Servers: ${client.guilds.cache.size}`);
-    console.log(`║  ⚙️  Prefix: ${prefix}`);
-    console.log(`║  📝 Slash Commands: Enabled`);
-    console.log(`╚══════════════════════════════════════════════════════════╝`);
+    Logger.log('SYSTEM', '══════════════════════════════════════════════════════════');
+    Logger.log('SYSTEM', '🚀 DISCORD BOT INITIALIZATION STARTED');
+    Logger.log('SYSTEM', '══════════════════════════════════════════════════════════');
+    Logger.log('INFO', `Bot User: ${client.user.tag} (ID: ${client.user.id})`);
+    Logger.log('INFO', `Client ID: ${CLIENT_ID}`);
+    Logger.log('INFO', `Target Guild ID: ${GUILD_ID}`);
+    Logger.log('INFO', `Prefix: ${prefix}`);
+    Logger.log('INFO', `Node.js Version: ${process.version}`);
+    Logger.log('INFO', `Platform: ${process.platform} ${process.arch}`);
+    Logger.log('INFO', `Memory Usage: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
     
-    // SET RICH PRESENCE (Custom Status)
+    const guilds = client.guilds.cache;
+    Logger.log('NETWORK', `Connected to ${guilds.size} server(s):`);
+    guilds.forEach(guild => {
+        Logger.log('NETWORK', `  • ${guild.name} (${guild.id}) - ${guild.memberCount} members`);
+    });
+    
     const activities = [
-        { name: `${prefix}help | Watching the server`, type: ActivityType.Watching },
-        { name: `${client.guilds.cache.size} servers`, type: ActivityType.Listening },
-        { name: 'Ranking System | Custom Font', type: ActivityType.Playing },
-        { name: 'Managing roles & channels', type: ActivityType.Competing }
+        { name: `${prefix}help | Watching ${guilds.size} servers`, type: ActivityType.Watching },
+        { name: `Managing ${ALL_ROLES.length} roles`, type: ActivityType.Competing },
+        { name: `${prefix}ping for latency`, type: ActivityType.Playing },
+        { name: `Custom Font System v2.0`, type: ActivityType.Streaming, url: 'https://twitch.tv/discord' }
     ];
     
     let currentActivity = 0;
-    
-    // Update activity every 30 seconds
     setInterval(() => {
         client.user.setActivity(activities[currentActivity]);
         currentActivity = (currentActivity + 1) % activities.length;
     }, 30000);
     
-    // Set initial activity
     client.user.setActivity(activities[0]);
     client.user.setStatus('online');
     
-    // Register slash commands
+    setInterval(() => {
+        const stats = Logger.getStats();
+        Logger.log('MEMORY', `Uptime: ${stats.uptime} | Commands: ${stats.totalCommands} | Memory: ${Math.round(stats.memoryUsage.heapUsed / 1024 / 1024)}MB`);
+    }, 60000);
+    
     try {
         const rest = new REST({ version: '10' }).setToken(TOKEN);
         const commands = [
             {
+                name: 'ping',
+                description: '🏓 Check bot latency and status'
+            },
+            {
                 name: 'rolelist',
-                description: 'Show all ranking roles'
+                description: '📊 Show all ranking roles'
             },
             {
-                name: 'roleinfo',
-                description: 'Show ranking information'
+                name: 'membercount',
+                description: '👥 Show server member statistics'
             },
             {
-                name: 'claninfo',
-                description: 'Show clan information'
+                name: 'help',
+                description: '❓ Show help menu with all commands'
             },
             {
-                name: 'rules',
-                description: 'Display server rules'
-            },
-            {
-                name: 'kick',
-                description: 'Kick a member',
-                options: [
-                    { name: 'member', description: 'Member to kick', type: 6, required: true },
-                    { name: 'reason', description: 'Reason for kick', type: 3, required: false }
-                ]
-            },
-            {
-                name: 'ban',
-                description: 'Ban a member',
-                options: [
-                    { name: 'member', description: 'Member to ban', type: 6, required: true },
-                    { name: 'reason', description: 'Reason for ban', type: 3, required: false }
-                ]
-            },
-            {
-                name: 'mute',
-                description: 'Mute a member',
-                options: [
-                    { name: 'member', description: 'Member to mute', type: 6, required: true },
-                    { name: 'reason', description: 'Reason for mute', type: 3, required: false }
-                ]
+                name: 'stats',
+                description: '📈 Show bot statistics and uptime'
             }
         ];
         
         await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
-        console.log('✅ Slash commands registered!');
+        Logger.log('SUCCESS', `Registered ${commands.length} slash commands successfully`);
     } catch (err) {
-        console.log('⚠️ Could not register slash commands:', err.message);
+        Logger.log('ERROR', `Failed to register slash commands: ${err.message}`);
     }
+    
+    Logger.log('SUCCESS', '══════════════════════════════════════════════════════════');
+    Logger.log('SUCCESS', '✅ BOT IS NOW FULLY OPERATIONAL AND READY FOR COMMANDS');
+    Logger.log('SUCCESS', '══════════════════════════════════════════════════════════');
 });
 
-// WELCOME EVENT - AUTO-ASSIGN VERIFICATION ROLES
 client.on('guildMemberAdd', async member => {
-    console.log(`👋 New member: ${member.user.tag} (${member.id})`);
+    Logger.log('INFO', `Member joined: ${member.user.tag} (${member.id})`);
     
-    // AUTO-ASSIGN THE 3 VERIFICATION ROLES
     try {
         const verificationNeeded = member.guild.roles.cache.find(role => role.name === applyCustomFont("Verification Needed"));
         const agreementNeeded = member.guild.roles.cache.find(role => role.name === applyCustomFont("Agreement Needed"));
@@ -411,9 +402,8 @@ client.on('guildMemberAdd', async member => {
         
         if (rolesToAssign.length > 0) {
             await member.roles.add(rolesToAssign);
-            console.log(`✅ Auto-assigned verification roles to ${member.user.tag}`);
+            Logger.log('SUCCESS', `Auto-assigned ${rolesToAssign.length} verification roles to ${member.user.tag}`);
             
-            // Send DM with instructions
             try {
                 const welcomeDM = new EmbedBuilder()
                     .setTitle('👋 Welcome to the Server!')
@@ -421,21 +411,21 @@ client.on('guildMemberAdd', async member => {
                     .setColor(0x00FF00)
                     .addFields(
                         { name: '📋 Next Steps', value: '1. Check #rules\n2. Complete verification\n3. Agree to guidelines\n4. Get started!' },
-                        { name: '🎯 Auto-Assigned Roles', value: 'You have been automatically assigned:\n• Verification Needed\n• Agreement Needed\n• Evaluation Needed\n\nPlease complete these requirements to gain full access.' }
+                        { name: '🎯 Auto-Assigned Roles', value: '• Verification Needed\n• Agreement Needed\n• Evaluation Needed\n\nComplete these requirements to gain full access.' }
                     )
-                    .setFooter({ text: 'Server Staff' })
+                    .setFooter({ text: 'Use .help for command list' })
                     .setTimestamp();
                 
                 await member.send({ embeds: [welcomeDM] });
+                Logger.log('INFO', `Sent welcome DM to ${member.user.tag}`);
             } catch (dmError) {
-                console.log('⚠️ Could not send welcome DM');
+                Logger.log('WARNING', `Could not send welcome DM to ${member.user.tag}: ${dmError.message}`);
             }
         }
     } catch (roleError) {
-        console.error('❌ Error auto-assigning roles:', roleError.message);
+        Logger.log('ERROR', `Error auto-assigning roles to ${member.user.tag}: ${roleError.message}`);
     }
     
-    // SEND WELCOME MESSAGE IN CHANNEL
     if (welcomeChannel) {
         try {
             const channel = await client.channels.fetch(welcomeChannel).catch(() => null);
@@ -446,24 +436,23 @@ client.on('guildMemberAdd', async member => {
                     .setColor(0x00FF00)
                     .addFields(
                         { name: 'Account Created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
-                        { name: 'Member Count', value: `${member.guild.memberCount}`, inline: true },
-                        { name: 'Verification', value: 'Please complete verification to access the server fully!', inline: false }
+                        { name: 'Member Count', value: `${member.guild.memberCount}`, inline: true }
                     )
-                    .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-                    .setFooter({ text: 'We hope you enjoy your stay!' })
+                    .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
+                    .setFooter({ text: `Member #${member.guild.memberCount}` })
                     .setTimestamp();
 
                 await channel.send({ content: `${member}`, embeds: [embed] });
+                Logger.log('INFO', `Sent welcome message for ${member.user.tag} in ${channel.name}`);
             }
         } catch (error) {
-            console.error('❌ Error in welcome event:', error);
+            Logger.log('ERROR', `Error in welcome event: ${error.message}`);
         }
     }
 });
 
-// LEAVE EVENT
 client.on('guildMemberRemove', async member => {
-    console.log(`👋 Member left: ${member.user.tag} (${member.id})`);
+    Logger.log('INFO', `Member left: ${member.user.tag} (${member.id})`);
     
     if (leaveChannel) {
         try {
@@ -483,12 +472,11 @@ client.on('guildMemberRemove', async member => {
                 await channel.send({ embeds: [embed] });
             }
         } catch (error) {
-            console.error('❌ Error in leave event:', error);
+            Logger.log('ERROR', `Error in leave event: ${error.message}`);
         }
     }
 });
 
-// ALL PREFIX COMMANDS (17+ commands)
 client.on('messageCreate', async message => {
     if (message.author.bot || !message.content.startsWith(prefix)) return;
     
@@ -496,10 +484,227 @@ client.on('messageCreate', async message => {
     const command = args.shift().toLowerCase();
     const guild = message.guild;
     
-    // COMMAND 1: .rolelistembed
-    if (command === 'rolelistembed') {
-        const roles = guild.roles.cache.filter(r => RANKING_ROLES.some(roleData => roleData.name === r.name));
+    Logger.log('COMMAND', `${message.author.tag} used: ${command} ${args.join(' ')}`, {
+        userId: message.author.id,
+        guildId: guild?.id,
+        channelId: message.channel.id,
+        timestamp: new Date().toISOString()
+    });
+    
+    if (command === 'role') {
+        try {
+            if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+                Logger.log('WARNING', `${message.author.tag} attempted .role without permissions`);
+                return message.reply('❌ You need Manage Roles permission!');
+            }
+            
+            const member = message.mentions.members.first();
+            if (!member) {
+                return message.reply('❌ Please mention a member! Usage: `.role @member RoleName`');
+            }
+            
+            const roleName = args.slice(1).join(' ');
+            if (!roleName) {
+                return message.reply('❌ Please specify a role name! Usage: `.role @member RoleName`');
+            }
+            
+            const role = guild.roles.cache.find(r => 
+                r.name.toLowerCase() === roleName.toLowerCase() || 
+                r.name === applyCustomFont(roleName)
+            );
+            
+            if (!role) {
+                return message.reply(`❌ Role "${roleName}" not found!`);
+            }
+            
+            if (!role.editable) {
+                return message.reply('❌ I cannot manage that role! (Role is above my highest role)');
+            }
+            
+            if (member.roles.cache.has(role.id)) {
+                await member.roles.remove(role);
+                Logger.log('SUCCESS', `Removed role ${role.name} from ${member.user.tag}`);
+                
+                const embed = new EmbedBuilder()
+                    .setTitle('🔄 Role Removed')
+                    .setDescription(`Removed **${role.name}** from ${member}`)
+                    .setColor(0xFFA500)
+                    .addFields(
+                        { name: 'Moderator', value: message.author.toString(), inline: true },
+                        { name: 'Role Color', value: role.hexColor, inline: true }
+                    )
+                    .setTimestamp();
+                
+                await message.channel.send({ embeds: [embed] });
+            } else {
+                await member.roles.add(role);
+                Logger.log('SUCCESS', `Added role ${role.name} to ${member.user.tag}`);
+                
+                const embed = new EmbedBuilder()
+                    .setTitle('✅ Role Assigned')
+                    .setDescription(`Added **${role.name}** to ${member}`)
+                    .setColor(role.color || 0x00FF00)
+                    .addFields(
+                        { name: 'Moderator', value: message.author.toString(), inline: true },
+                        { name: 'Role Color', value: role.hexColor, inline: true }
+                    )
+                    .setTimestamp();
+                
+                await message.channel.send({ embeds: [embed] });
+            }
+        } catch (error) {
+            Logger.log('ERROR', `Error in .role command: ${error.message}`);
+            message.reply(`❌ Error: ${error.message}`);
+        }
+    }
+    
+    else if (command === 'ping') {
+        const sent = await message.channel.send('🏓 Pinging...');
+        const latency = sent.createdTimestamp - message.createdTimestamp;
+        const apiLatency = Math.round(client.ws.ping);
         
+        const embed = new EmbedBuilder()
+            .setTitle('🏓 Pong!')
+            .setColor(0x00FF00)
+            .addFields(
+                { name: '📡 Bot Latency', value: `${latency}ms`, inline: true },
+                { name: '🌐 API Latency', value: `${apiLatency}ms`, inline: true },
+                { name: '🖥️ Uptime', value: Logger.getStats().uptime, inline: true }
+            )
+            .setFooter({ text: `Shard: ${client.shard?.ids || 0} | Guild: ${guild?.name || 'DM'}` })
+            .setTimestamp();
+        
+        await sent.edit({ content: null, embeds: [embed] });
+        Logger.log('DEBUG', `Ping command executed - Bot: ${latency}ms, API: ${apiLatency}ms`);
+    }
+    
+    else if (command === 'embed') {
+        const text = args.join(' ');
+        if (!text) {
+            return message.reply('❌ Please provide text! Usage: `.embed Your text here`');
+        }
+        
+        const embed = new EmbedBuilder()
+            .setDescription(text)
+            .setColor(0x5865F2)
+            .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+            .setTimestamp();
+        
+        await message.channel.send({ embeds: [embed] });
+        Logger.log('INFO', `${message.author.tag} created embed: ${text.substring(0, 50)}...`);
+    }
+    
+    else if (command === 'membercount') {
+        const members = await guild.members.fetch();
+        const total = members.size;
+        const online = members.filter(m => m.presence?.status === 'online').size;
+        const idle = members.filter(m => m.presence?.status === 'idle').size;
+        const dnd = members.filter(m => m.presence?.status === 'dnd').size;
+        const offline = members.filter(m => !m.presence || m.presence.status === 'offline').size;
+        const bots = members.filter(m => m.user.bot).size;
+        const humans = total - bots;
+        
+        const embed = new EmbedBuilder()
+            .setTitle(`👥 ${guild.name} Member Statistics`)
+            .setColor(0x5865F2)
+            .setThumbnail(guild.iconURL({ dynamic: true }))
+            .addFields(
+                { name: '📊 Total Members', value: `${total}`, inline: true },
+                { name: '🤖 Bots', value: `${bots}`, inline: true },
+                { name: '👤 Humans', value: `${humans}`, inline: true },
+                { name: '🟢 Online', value: `${online}`, inline: true },
+                { name: '🟡 Idle', value: `${idle}`, inline: true },
+                { name: '🔴 Do Not Disturb', value: `${dnd}`, inline: true },
+                { name: '⚫ Offline', value: `${offline}`, inline: true }
+            )
+            .setFooter({ text: `Server Created: ${guild.createdAt.toDateString()}` })
+            .setTimestamp();
+        
+        await message.channel.send({ embeds: [embed] });
+        Logger.log('INFO', `Membercount command executed - Total: ${total}, Online: ${online}`);
+    }
+    
+    else if (command === 'help') {
+        const embed = new EmbedBuilder()
+            .setTitle('❓ Bot Help Menu')
+            .setDescription(`Prefix: \`${prefix}\`\nTotal Commands: 22+`)
+            .setColor(0x5865F2)
+            .setThumbnail(client.user.displayAvatarURL())
+            .addFields(
+                {
+                    name: '🔧 Utility Commands',
+                    value: '```.ping - Check bot latency\n.embed <text> - Create embed\n.membercount - Show member stats\n.help - This menu\n.stats - Bot statistics```',
+                    inline: false
+                },
+                {
+                    name: '👥 Role Management',
+                    value: '```.role @member <role> - Assign/remove role\n.rolelistembed - List ranking roles\n.roleinfoembed - Role info\n.rolemake - Create all roles\n.deleteroles - Delete all roles```',
+                    inline: false
+                },
+                {
+                    name: '📊 Ranking System',
+                    value: '```.setuprankings - Create ranking roles\n.deleterankings - Delete ranking roles```',
+                    inline: false
+                },
+                {
+                    name: '📁 Channel Management',
+                    value: '```.channelsmake - Create all channels\n.channelsdelete - Delete all channels```',
+                    inline: false
+                },
+                {
+                    name: '🛡️ Moderation',
+                    value: '```.kick @member [reason]\n.ban @member [reason]\n.mute @member [reason]```',
+                    inline: false
+                },
+                {
+                    name: '✅ Verification',
+                    value: '```.verify @member\n.unverify @member\n.checkagreement @member\n.allowagreement @member\n.allowaccess @member\n.removeaccess @member```',
+                    inline: false
+                },
+                {
+                    name: '⚙️ Settings',
+                    value: '```.enablewelcomechat\n.enableleavechat\n.disablewelcomechat\n.disableleavechat```',
+                    inline: false
+                },
+                {
+                    name: '📜 Information',
+                    value: '```.rulesembed - Server rules\n.claninfoembed - Clan info```',
+                    inline: false
+                }
+            )
+            .setFooter({ text: `Bot Version 2.0 | ${client.guilds.cache.size} servers` })
+            .setTimestamp();
+        
+        await message.channel.send({ embeds: [embed] });
+        Logger.log('INFO', `Help command executed by ${message.author.tag}`);
+    }
+    
+    else if (command === 'stats') {
+        const stats = Logger.getStats();
+        const memory = stats.memoryUsage;
+        
+        const embed = new EmbedBuilder()
+            .setTitle('📈 Bot Statistics')
+            .setColor(0x5865F2)
+            .addFields(
+                { name: '⏱️ Uptime', value: stats.uptime, inline: true },
+                { name: '🏁 Started', value: new Date(stats.startTime).toLocaleString(), inline: true },
+                { name: '📊 Commands Executed', value: stats.totalCommands.toString(), inline: true },
+                { name: '⚠️ Total Errors', value: stats.totalErrors.toString(), inline: true },
+                { name: '💾 Memory Usage', value: `${Math.round(memory.heapUsed / 1024 / 1024)}MB`, inline: true },
+                { name: '📡 Servers', value: client.guilds.cache.size.toString(), inline: true },
+                { name: '🤖 Users Cached', value: client.users.cache.size.toString(), inline: true },
+                { name: '🔄 Node.js', value: process.version, inline: true },
+                { name: '⚙️ Platform', value: `${process.platform} ${process.arch}`, inline: true }
+            )
+            .setFooter({ text: 'Detailed logs available in Render console' })
+            .setTimestamp();
+        
+        await message.channel.send({ embeds: [embed] });
+    }
+    
+    else if (command === 'rolelistembed') {
+        const roles = guild.roles.cache.filter(r => RANKING_ROLES.some(roleData => roleData.name === r.name));
         const embed = new EmbedBuilder()
             .setTitle('📊 Ranking Roles List')
             .setDescription(`**Total Ranking Roles:** ${roles.size}`)
@@ -523,20 +728,14 @@ client.on('messageCreate', async message => {
                     inline: false
                 });
             });
-            
-            embed.addFields({
-                name: '🎨 Color Gradient',
-                value: 'Yellow → Orange → Red → Dark Red → Black\nEach color represents a progression level.',
-                inline: false
-            });
         }
         
         const pingRoles = roles.first(5).map(r => r.toString()).join(' ');
         await message.channel.send({ content: pingRoles || '', embeds: [embed] });
+        Logger.log('INFO', `Rolelistembed executed - ${roles.size} roles listed`);
     }
     
-    // COMMAND 2: .roleinfoembed
-    if (command === 'roleinfoembed') {
+    else if (command === 'roleinfoembed') {
         const embed = new EmbedBuilder()
             .setTitle('ℹ️ Role Information')
             .setDescription('Complete ranking system explanation:')
@@ -545,33 +744,26 @@ client.on('messageCreate', async message => {
                 { name: '🟡 Beginner Ranks', value: 'Observer → Initiate → Novitiate → Apprentice', inline: false },
                 { name: '🟠 Intermediate Ranks', value: 'Intermediate → Practitioner → Proficient', inline: false },
                 { name: '🔴 Advanced Ranks', value: 'Advanced → Experienced → Advanced Practitioner', inline: false },
-                { name: '⚫ Elite Ranks', value: 'Ascendant → Transcendent → Luminary', inline: false },
-                { name: '🌟 Prime & Eternal', value: 'Prime levels show mastery, Eternal shows legendary status', inline: false },
-                { name: '👑 Ultimate Ranks', value: 'Omniscient → Nexithal → Zethithal (Highest achievable)', inline: false }
-            )
-            .setFooter({ text: 'Progression requires evaluation and activity' });
+                { name: '⚫ Elite Ranks', value: 'Ascendant → Transcendent → Luminary', inline: false }
+            );
         
         await message.channel.send({ embeds: [embed] });
     }
     
-    // COMMAND 3: .claninfoembed
-    if (command === 'claninfoembed') {
+    else if (command === 'claninfoembed') {
         const embed = new EmbedBuilder()
             .setTitle('🏰 Clan Information')
             .setDescription('Welcome to our community!')
             .setColor(0xF1C40F)
             .addFields(
                 { name: 'About Us', value: 'Dedicated group focused on growth, teamwork, and excellence.', inline: false },
-                { name: 'Our Mission', value: 'Create supportive environment for skill development.', inline: false },
-                { name: 'Community Values', value: 'Respect • Teamwork • Learning • Positive Attitude', inline: false },
-                { name: 'Get Started', value: '1. Read #rules\n2. Complete verification\n3. Agree to guidelines\n4. Participate!', inline: false }
+                { name: 'Our Mission', value: 'Create supportive environment for skill development.', inline: false }
             );
         
         await message.channel.send({ embeds: [embed] });
     }
     
-    // COMMAND 4: .Enablewelcomechat
-    if (command === 'enablewelcomechat') {
+    else if (command === 'enablewelcomechat') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             return message.reply('❌ Administrator permission required!');
         }
@@ -581,10 +773,10 @@ client.on('messageCreate', async message => {
             .setDescription(`Welcome messages enabled in ${message.channel}`)
             .setColor(0x00FF00);
         await message.channel.send({ embeds: [embed] });
+        Logger.log('SYSTEM', `Welcome channel set to: ${message.channel.name} (${message.channel.id})`);
     }
     
-    // COMMAND 5: .Enableleavechat
-    if (command === 'enableleavechat') {
+    else if (command === 'enableleavechat') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             return message.reply('❌ Administrator permission required!');
         }
@@ -594,10 +786,10 @@ client.on('messageCreate', async message => {
             .setDescription(`Leave messages enabled in ${message.channel}`)
             .setColor(0x00FF00);
         await message.channel.send({ embeds: [embed] });
+        Logger.log('SYSTEM', `Leave channel set to: ${message.channel.name} (${message.channel.id})`);
     }
     
-    // COMMAND 6: .Disablewelcomechat
-    if (command === 'disablewelcomechat') {
+    else if (command === 'disablewelcomechat') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             return message.reply('❌ Administrator permission required!');
         }
@@ -605,8 +797,7 @@ client.on('messageCreate', async message => {
         await message.reply('✅ Welcome messages disabled');
     }
     
-    // COMMAND 7: .Disableleavechat
-    if (command === 'disableleavechat') {
+    else if (command === 'disableleavechat') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             return message.reply('❌ Administrator permission required!');
         }
@@ -614,8 +805,7 @@ client.on('messageCreate', async message => {
         await message.reply('✅ Leave messages disabled');
     }
     
-    // COMMAND 8: .Rulesembed
-    if (command === 'rulesembed') {
+    else if (command === 'rulesembed') {
         const embed = new EmbedBuilder()
             .setTitle('📜 Server Rules')
             .setColor(0xFF0000)
@@ -634,8 +824,7 @@ client.on('messageCreate', async message => {
         await message.channel.send({ embeds: [embed] });
     }
     
-    // COMMAND 9: .Deleterankings
-    if (command === 'deleterankings') {
+    else if (command === 'deleterankings') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             return message.reply('❌ Administrator permission required!');
         }
@@ -650,10 +839,10 @@ client.on('messageCreate', async message => {
             }
         }
         await message.reply(`✅ Deleted ${deleted} ranking roles`);
+        Logger.log('SYSTEM', `Deleted ${deleted} ranking roles`);
     }
     
-    // COMMAND 10: .Setuprankings
-    if (command === 'setuprankings') {
+    else if (command === 'setuprankings') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             return message.reply('❌ Administrator permission required!');
         }
@@ -677,7 +866,6 @@ client.on('messageCreate', async message => {
             }
         }
         
-        // Create verification roles too
         const verificationRoles = [
             { name: applyCustomFont("Verification Needed"), color: "#FFA500" },
             { name: applyCustomFont("Agreement Needed"), color: "#FF8C00" },
@@ -698,10 +886,10 @@ client.on('messageCreate', async message => {
         }
         
         await message.channel.send(`✅ Created ${created} ranking roles with gradient colors!\n✅ Also created 3 auto-assign verification roles.`);
+        Logger.log('SYSTEM', `Created ${created} ranking roles and 3 verification roles`);
     }
     
-    // COMMAND 11: .Rolemake
-    if (command === 'rolemake') {
+    else if (command === 'rolemake') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             return message.reply('❌ Administrator permission required!');
         }
@@ -726,10 +914,10 @@ client.on('messageCreate', async message => {
         }
         
         await message.channel.send(`✅ Created ${created} roles with custom font and colors!`);
+        Logger.log('SYSTEM', `Created ${created} roles`);
     }
     
-    // COMMAND 12: .Deleteroles
-    if (command === 'deleteroles') {
+    else if (command === 'deleteroles') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             return message.reply('❌ Administrator permission required!');
         }
@@ -743,10 +931,10 @@ client.on('messageCreate', async message => {
             }
         }
         await message.reply(`✅ Deleted ${deleted} roles`);
+        Logger.log('SYSTEM', `Deleted ${deleted} roles`);
     }
     
-    // COMMAND 13: .Kick
-    if (command === 'kick') {
+    else if (command === 'kick') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
             return message.reply('❌ Kick permission required!');
         }
@@ -764,13 +952,14 @@ client.on('messageCreate', async message => {
                     { name: 'Moderator', value: message.author.toString() }
                 );
             await message.channel.send({ embeds: [embed] });
+            Logger.log('MODERATION', `Kicked ${member.user.tag} for: ${reason}`);
         } catch (err) {
             message.reply(`❌ Failed: ${err.message}`);
+            Logger.log('ERROR', `Kick failed for ${member?.user?.tag}: ${err.message}`);
         }
     }
     
-    // COMMAND 14: .ban
-    if (command === 'ban') {
+    else if (command === 'ban') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
             return message.reply('❌ Ban permission required!');
         }
@@ -788,13 +977,14 @@ client.on('messageCreate', async message => {
                     { name: 'Moderator', value: message.author.toString() }
                 );
             await message.channel.send({ embeds: [embed] });
+            Logger.log('MODERATION', `Banned ${member.user.tag} for: ${reason}`);
         } catch (err) {
             message.reply(`❌ Failed: ${err.message}`);
+            Logger.log('ERROR', `Ban failed for ${member?.user?.tag}: ${err.message}`);
         }
     }
     
-    // COMMAND 15: .mute
-    if (command === 'mute') {
+    else if (command === 'mute') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
             return message.reply('❌ Manage roles permission required!');
         }
@@ -834,13 +1024,13 @@ client.on('messageCreate', async message => {
                     { name: 'Moderator', value: message.author.toString() }
                 );
             await message.channel.send({ embeds: [embed] });
+            Logger.log('MODERATION', `Muted ${member.user.tag} for: ${reason}`);
         } catch (err) {
             message.reply(`❌ Failed: ${err.message}`);
         }
     }
     
-    // COMMAND 16: .channelsmake
-    if (command === 'channelsmake') {
+    else if (command === 'channelsmake') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             return message.reply('❌ Administrator permission required!');
         }
@@ -877,10 +1067,10 @@ client.on('messageCreate', async message => {
         }
         
         await message.channel.send(`✅ Created ${created} channels with custom font!`);
+        Logger.log('SYSTEM', `Created ${created} channels`);
     }
     
-    // COMMAND 17: .channelsdelete
-    if (command === 'channelsdelete') {
+    else if (command === 'channelsdelete') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             return message.reply('❌ Administrator permission required!');
         }
@@ -894,12 +1084,10 @@ client.on('messageCreate', async message => {
             }
         }
         await message.reply(`✅ Deleted ${deleted} channels`);
+        Logger.log('SYSTEM', `Deleted ${deleted} channels`);
     }
     
-    // VERIFICATION COMMANDS
-    
-    // .Verify
-    if (command === 'verify') {
+    else if (command === 'verify') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
             return message.reply('❌ Manage roles permission required!');
         }
@@ -919,8 +1107,7 @@ client.on('messageCreate', async message => {
         await message.reply(`✅ ${member} verified with partial access`);
     }
     
-    // .Unverify
-    if (command === 'unverify') {
+    else if (command === 'unverify') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
             return message.reply('❌ Manage roles permission required!');
         }
@@ -942,8 +1129,7 @@ client.on('messageCreate', async message => {
         await message.reply(`✅ ${member} unverified`);
     }
     
-    // .CheckAgreement
-    if (command === 'checkagreement') {
+    else if (command === 'checkagreement') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
             return message.reply('❌ Manage roles permission required!');
         }
@@ -962,8 +1148,7 @@ client.on('messageCreate', async message => {
         await message.reply(`📋 ${member}'s agreement status: **${status}**`);
     }
     
-    // .AllowAgreement
-    if (command === 'allowagreement') {
+    else if (command === 'allowagreement') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
             return message.reply('❌ Manage roles permission required!');
         }
@@ -983,8 +1168,7 @@ client.on('messageCreate', async message => {
         await message.reply(`✅ ${member}'s agreement accepted`);
     }
     
-    // .AllowAccess
-    if (command === 'allowaccess') {
+    else if (command === 'allowaccess') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
             return message.reply('❌ Manage roles permission required!');
         }
@@ -1012,8 +1196,7 @@ client.on('messageCreate', async message => {
         await message.reply(`✅ ${member} granted full access`);
     }
     
-    // .RemoveAccess
-    if (command === 'removeaccess') {
+    else if (command === 'removeaccess') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
             return message.reply('❌ Manage roles permission required!');
         }
@@ -1034,14 +1217,36 @@ client.on('messageCreate', async message => {
     }
 });
 
-// SLASH COMMANDS
 client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return;
     
     const { commandName, options } = interaction;
     const guild = interaction.guild;
     
-    if (commandName === 'rolelist') {
+    Logger.log('COMMAND', `${interaction.user.tag} used slash: /${commandName}`, {
+        userId: interaction.user.id,
+        guildId: guild?.id,
+        channelId: interaction.channelId
+    });
+    
+    if (commandName === 'ping') {
+        const latency = Date.now() - interaction.createdTimestamp;
+        const apiLatency = Math.round(client.ws.ping);
+        
+        const embed = new EmbedBuilder()
+            .setTitle('🏓 Pong!')
+            .setColor(0x00FF00)
+            .addFields(
+                { name: '📡 Bot Latency', value: `${latency}ms`, inline: true },
+                { name: '🌐 API Latency', value: `${apiLatency}ms`, inline: true }
+            )
+            .setFooter({ text: 'Use .help for more commands' })
+            .setTimestamp();
+        
+        await interaction.reply({ embeds: [embed] });
+    }
+    
+    else if (commandName === 'rolelist') {
         const roles = guild.roles.cache.filter(r => RANKING_ROLES.some(roleData => roleData.name === r.name));
         const embed = new EmbedBuilder()
             .setTitle('📊 Ranking Roles')
@@ -1049,114 +1254,92 @@ client.on('interactionCreate', async interaction => {
             .setColor(0xFFD700);
         
         if (roles.size > 0) {
-            const roleList = roles.first(20).map(r => r.toString()).join('\n');
+            const roleList = roles.first(15).map(r => r.toString()).join('\n');
             embed.addFields({ name: 'Roles', value: roleList });
         }
         
         await interaction.reply({ embeds: [embed] });
     }
     
-    if (commandName === 'roleinfo') {
-        const embed = new EmbedBuilder()
-            .setTitle('ℹ️ Ranking System')
-            .setColor(0x2ECC71)
-            .addFields(
-                { name: 'System', value: 'Yellow (Beginner) → Red (Advanced) → Black (Elite)' },
-                { name: 'Progression', value: 'Complete evaluations to rank up' }
-            );
-        await interaction.reply({ embeds: [embed] });
-    }
-    
-    if (commandName === 'claninfo') {
-        const embed = new EmbedBuilder()
-            .setTitle('🏰 Clan Info')
-            .setColor(0xF1C40F)
-            .addFields(
-                { name: 'Welcome', value: 'Dedicated community focused on growth' },
-                { name: 'Get Started', value: 'Complete verification and read rules' }
-            );
-        await interaction.reply({ embeds: [embed] });
-    }
-    
-    if (commandName === 'rules') {
-        const embed = new EmbedBuilder()
-            .setTitle('📜 Rules')
-            .setColor(0xFF0000)
-            .addFields(
-                { name: 'Basic Rules', value: 'Be respectful, no spam, follow Discord TOS' },
-                { name: 'Conduct', value: 'Use proper channels and listen to staff' }
-            );
-        await interaction.reply({ embeds: [embed] });
-    }
-    
-    if (commandName === 'kick') {
-        if (!interaction.memberPermissions.has(PermissionsBitField.Flags.KickMembers)) {
-            return interaction.reply({ content: '❌ No permission!', ephemeral: true });
-        }
-        const member = options.getMember('member');
-        const reason = options.getString('reason') || 'No reason';
-        try {
-            await member.kick(reason);
-            await interaction.reply({ content: `✅ ${member} kicked`, ephemeral: true });
-        } catch (err) {
-            interaction.reply({ content: `❌ Failed: ${err.message}`, ephemeral: true });
-        }
-    }
-    
-    if (commandName === 'ban') {
-        if (!interaction.memberPermissions.has(PermissionsBitField.Flags.BanMembers)) {
-            return interaction.reply({ content: '❌ No permission!', ephemeral: true });
-        }
-        const member = options.getMember('member');
-        const reason = options.getString('reason') || 'No reason';
-        try {
-            await member.ban({ reason });
-            await interaction.reply({ content: `✅ ${member} banned`, ephemeral: true });
-        } catch (err) {
-            interaction.reply({ content: `❌ Failed: ${err.message}`, ephemeral: true });
-        }
-    }
-    
-    if (commandName === 'mute') {
-        if (!interaction.memberPermissions.has(PermissionsBitField.Flags.ManageRoles)) {
-            return interaction.reply({ content: '❌ No permission!', ephemeral: true });
-        }
-        const member = options.getMember('member');
-        const reason = options.getString('reason') || 'No reason';
+    else if (commandName === 'membercount') {
+        const members = await guild.members.fetch();
+        const total = members.size;
+        const online = members.filter(m => m.presence?.status === 'online').size;
         
-        let muteRole = guild.roles.cache.find(r => r.name === applyCustomFont("Muted"));
-        if (!muteRole) {
-            try {
-                muteRole = await guild.roles.create({
-                    name: applyCustomFont("Muted"),
-                    color: '#95a5a6',
-                    reason: 'Mute role'
-                });
-            } catch (err) {
-                return interaction.reply({ content: `❌ Failed to create role: ${err.message}`, ephemeral: true });
-            }
-        }
+        const embed = new EmbedBuilder()
+            .setTitle('👥 Member Count')
+            .setColor(0x5865F2)
+            .addFields(
+                { name: 'Total Members', value: `${total}`, inline: true },
+                { name: 'Online', value: `${online}`, inline: true }
+            );
         
-        try {
-            await member.roles.add(muteRole);
-            await interaction.reply({ content: `✅ ${member} muted`, ephemeral: true });
-        } catch (err) {
-            interaction.reply({ content: `❌ Failed: ${err.message}`, ephemeral: true });
-        }
+        await interaction.reply({ embeds: [embed] });
+    }
+    
+    else if (commandName === 'help') {
+        const embed = new EmbedBuilder()
+            .setTitle('❓ Bot Help')
+            .setDescription(`Use \`.help\` for detailed command list\n\n**Slash Commands:**\n• /ping - Check latency\n• /rolelist - Show ranking roles\n• /membercount - Member statistics\n• /stats - Bot stats`)
+            .setColor(0x5865F2)
+            .setFooter({ text: `Prefix: ${prefix}` });
+        
+        await interaction.reply({ embeds: [embed] });
+    }
+    
+    else if (commandName === 'stats') {
+        const stats = Logger.getStats();
+        
+        const embed = new EmbedBuilder()
+            .setTitle('📈 Bot Statistics')
+            .setColor(0x5865F2)
+            .addFields(
+                { name: 'Uptime', value: stats.uptime, inline: true },
+                { name: 'Commands Executed', value: stats.totalCommands.toString(), inline: true },
+                { name: 'Servers', value: client.guilds.cache.size.toString(), inline: true }
+            );
+        
+        await interaction.reply({ embeds: [embed] });
     }
 });
 
-// ERROR HANDLING
-client.on('error', console.error);
-process.on('unhandledRejection', console.error);
+client.on('error', (error) => {
+    Logger.log('ERROR', `Discord Client Error: ${error.message}`, error);
+});
 
-// LOGIN
-client.login(TOKEN).catch(err => {
-    console.error('❌ LOGIN FAILED!');
-    console.error('❌ Error:', err.message);
-    console.error('❌ Token present:', !!TOKEN);
-    if (TOKEN) {
-        console.error('❌ Token length:', TOKEN.length);
-    }
+client.on('warn', (warning) => {
+    Logger.log('WARNING', `Discord Client Warning: ${warning}`);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    Logger.log('ERROR', `Unhandled Promise Rejection: ${reason}`, { promise });
+});
+
+process.on('uncaughtException', (error) => {
+    Logger.log('ERROR', `Uncaught Exception: ${error.message}`, error);
     process.exit(1);
+});
+
+Logger.log('SYSTEM', '══════════════════════════════════════════════════════════');
+Logger.log('SYSTEM', '🚀 STARTING DISCORD BOT - INITIALIZING CONNECTION');
+Logger.log('SYSTEM', '══════════════════════════════════════════════════════════');
+Logger.log('INFO', `Environment: ${process.env.NODE_ENV || 'production'}`);
+Logger.log('INFO', `Starting time: ${new Date().toISOString()}`);
+Logger.log('DEBUG', `Token present: ${!!TOKEN}`);
+Logger.log('DEBUG', `Guild ID: ${GUILD_ID || 'Not set'}`);
+Logger.log('DEBUG', `Client ID: ${CLIENT_ID || 'Not set'}`);
+
+client.login(TOKEN).catch(err => {
+    Logger.log('ERROR', '══════════════════════════════════════════════════════════');
+    Logger.log('ERROR', '❌ BOT LOGIN FAILED!');
+    Logger.log('ERROR', '══════════════════════════════════════════════════════════');
+    Logger.log('ERROR', `Login Error: ${err.message}`);
+    Logger.log('ERROR', `Error Stack: ${err.stack}`);
+    Logger.log('ERROR', `Token Length: ${TOKEN ? TOKEN.length : 0}`);
+    Logger.log('ERROR', `Token Preview: ${TOKEN ? TOKEN.substring(0, 10) + '...' : 'NO TOKEN'}`);
+    Logger.log('ERROR', '══════════════════════════════════════════════════════════');
+    
+    setTimeout(() => {
+        process.exit(1);
+    }, 10000);
 });
