@@ -1,6 +1,4 @@
 const { Client, GatewayIntentBits, Collection, EmbedBuilder, PermissionsBitField, ChannelType, REST, Routes } = require('discord.js');
-const dotenv = require('dotenv');
-dotenv.config();
 
 // Bot setup
 const client = new Client({
